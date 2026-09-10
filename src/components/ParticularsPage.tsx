@@ -270,26 +270,12 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
           setProductOptions(mapped);
           if (!selectedProduct) setSelectedProduct(mapped[0].name);
         }
-
-        // Fetch Next Bill Number Automatically
-        fetchNextBillNo();
       } catch (err) {
         console.error('Error loading dropdown options:', err);
       }
     };
     loadOptions();
   }, []);
-
-  const fetchNextBillNo = async () => {
-    try {
-      const res: any = await ParticularsApi.getNextBillNo();
-      if (res && res.nextBillNo) {
-        setBillNo(res.nextBillNo);
-      }
-    } catch (err) {
-      console.error('Failed to load next bill no:', err);
-    }
-  };
 
   // Fetch Accounts
   const fetchAccounts = async (targetCustomer?: string) => {
@@ -421,6 +407,19 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
 
   // Subtab 2: Submit Particular Bill
   const handleCreateParticular = async () => {
+    if (!billNo || !billNo.trim()) {
+      alert('Please enter a Bill Number');
+      return;
+    }
+    if (!currentCustomerName) {
+      alert('Please select a Customer');
+      return;
+    }
+    if (productRows.length === 0) {
+      alert('Please add at least one Product Item');
+      return;
+    }
+
     try {
       setCreateLoading(true);
       const created = await ParticularsApi.create({
@@ -438,7 +437,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
         products: productRows,
       });
 
-      const assignedBillNo = created?.billNo || billNo || '';
+      const assignedBillNo = created?.billNo || billNo.trim();
       const createdBillData: BillPrintData = {
         billNo: assignedBillNo,
         customerName: currentCustomerName || 'General',
@@ -465,13 +464,13 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
       };
 
       alert(`Particular bill #${assignedBillNo} for ${company || 'General'} created successfully!`);
+      setBillNo('');
       setProductRows([]);
       setCaseCount('0');
       setDiscount('');
       setTransport('');
       setPacking('');
       setTax('');
-      fetchNextBillNo();
       fetchAccounts(filterCustomer);
       fetchParticulars();
       setActiveSubTab('Particular Details');
@@ -629,41 +628,47 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
   };
 
   const handleAddEditProductRow = () => {
-    setEditBillForm((prev) => ({
-      ...prev,
-      products: [
+    setEditBillForm((prev) => {
+      const updated = [
         ...prev.products,
         {
           id: `edit-prod-${Date.now()}`,
-          particular: '',
+          particular: productOptions[0]?.name || '',
           quantity: '1',
           rate: '0',
           pktUnit: '-',
           amount: '0.00',
         },
-      ],
-    }));
+      ];
+      const totalCases = updated.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0);
+      return { ...prev, products: updated, caseCount: String(totalCases) };
+    });
   };
 
   const handleUpdateEditProductRow = (index: number, field: string, val: string) => {
     setEditBillForm((prev) => {
       const updated = [...prev.products];
       const row = { ...updated[index], [field]: val };
-      if (field === 'quantity' || field === 'rate') {
+      if (field === 'quantity' || field === 'rate' || field === 'pktUnit') {
         const q = parseFloat(field === 'quantity' ? val : row.quantity) || 0;
         const r = parseFloat(field === 'rate' ? val : row.rate) || 0;
-        row.amount = (q * r).toFixed(2);
+        const pktStr = (field === 'pktUnit' ? val : row.pktUnit) || '';
+        const pNum = parseFloat(pktStr);
+        const pieces = !isNaN(pNum) && pNum > 0 ? pNum : 1;
+        row.amount = (q * pieces * r).toFixed(2);
       }
       updated[index] = row;
-      return { ...prev, products: updated };
+      const totalCases = updated.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0);
+      return { ...prev, products: updated, caseCount: String(totalCases) };
     });
   };
 
   const handleDeleteEditProductRow = (index: number) => {
-    setEditBillForm((prev) => ({
-      ...prev,
-      products: prev.products.filter((_, i) => i !== index),
-    }));
+    setEditBillForm((prev) => {
+      const updated = prev.products.filter((_, i) => i !== index);
+      const totalCases = updated.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0);
+      return { ...prev, products: updated, caseCount: String(totalCases) };
+    });
   };
 
   // Edit Calculation Hooks
@@ -673,21 +678,27 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
 
   const editDiscountVal = useMemo(() => {
     const dStr = String(editBillForm.discount || '').trim();
-    const dNum = parseFloat(dStr.replace(/[^0-9.]/g, '')) || 0;
+    if (!dStr) return 0;
+    const cleanDisc = dStr.replace(/[^0-9.]/g, '');
+    const dNum = parseFloat(cleanDisc) || 0;
     if (dNum <= 0) return 0;
     return dStr.includes('%') || dNum <= 100 ? (editSubtotal * dNum) / 100 : dNum;
   }, [editSubtotal, editBillForm.discount]);
 
   const editPackingVal = useMemo(() => {
     const pStr = String(editBillForm.packing || '').trim();
-    const pNum = parseFloat(pStr.replace(/[^0-9.]/g, '')) || 0;
+    if (!pStr) return 0;
+    const cleanPack = pStr.replace(/[^0-9.]/g, '');
+    const pNum = parseFloat(cleanPack) || 0;
     if (pNum <= 0) return 0;
     return pStr.includes('%') || pNum <= 100 ? (editSubtotal * pNum) / 100 : pNum;
   }, [editSubtotal, editBillForm.packing]);
 
   const editTaxVal = useMemo(() => {
     const tStr = String(editBillForm.tax || '').trim();
-    const tNum = parseFloat(tStr.replace(/[^0-9.]/g, '')) || 0;
+    if (!tStr) return 0;
+    const cleanTax = tStr.replace(/[^0-9.]/g, '');
+    const tNum = parseFloat(cleanTax) || 0;
     if (tNum <= 0) return 0;
     const base = Math.max(0, editSubtotal - editDiscountVal + editPackingVal);
     return tStr.includes('%') || tNum <= 100 ? (base * tNum) / 100 : tNum;
@@ -1340,25 +1351,24 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
               <Box sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 1.5 }}>
                 <Box>
                   <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Bill No (Auto)
+                    Bill No *
                   </Typography>
                   <TextField
                     fullWidth
                     size="small"
-                    placeholder="Auto-generated"
+                    placeholder="Enter Bill No (e.g. 101)"
                     value={billNo}
                     onChange={(e) => setBillNo(e.target.value)}
                     slotProps={{
                       input: {
                         sx: {
                           fontSize: '13px',
-                          fontWeight: 700,
-                          color: '#0B4DB7',
+                          fontWeight: 600,
                           height: '36px',
-                          backgroundColor: '#F0F9FF',
+                          backgroundColor: '#FFFFFF',
                           borderRadius: '6px',
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#BAE6FD',
+                            borderColor: '#CBD5E1',
                           },
                         },
                       },
@@ -3023,7 +3033,22 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
 
         <DialogContent sx={{ pt: 2.5 }}>
           {/* Bill Info Grid */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2, mb: 2.5 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1.2fr 1.2fr 1fr' }, gap: 2, mb: 2.5 }}>
+            <Box>
+              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
+                Bill No *
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                value={editBillForm.billNo}
+                onChange={(e) => setEditBillForm((prev) => ({ ...prev, billNo: e.target.value }))}
+                slotProps={{
+                  input: { sx: { fontSize: '13px', fontWeight: 700, borderRadius: '6px' } },
+                }}
+              />
+            </Box>
+
             <Box>
               <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
                 Customer Name *
