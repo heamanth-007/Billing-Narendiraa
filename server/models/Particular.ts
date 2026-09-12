@@ -10,6 +10,9 @@ export interface IParticularProductItem {
 
 export interface IParticular extends Document {
   customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  customerGst?: string;
   caseCount: string;
   companyName: string;
   discount: string;
@@ -19,6 +22,10 @@ export interface IParticular extends Document {
   tax: string;
   amount: string;
   total: string;
+  paymentStatus?: 'PAID' | 'UNPAID' | 'PARTIAL';
+  paymentMode?: 'CASH' | 'UPI' | 'BANK' | 'CREDIT';
+  paidAmount?: string;
+  notes?: string;
   date: string;
   pdfData?: string;
   pdfName?: string;
@@ -39,6 +46,9 @@ const ParticularProductItemSchema: Schema = new Schema({
 const ParticularSchema: Schema = new Schema(
   {
     customerName: { type: String, required: true, trim: true },
+    customerPhone: { type: String, default: '' },
+    customerAddress: { type: String, default: '' },
+    customerGst: { type: String, default: '' },
     caseCount: { type: String, default: '0' },
     companyName: { type: String, required: true, trim: true },
     discount: { type: String, default: '' },
@@ -48,6 +58,10 @@ const ParticularSchema: Schema = new Schema(
     tax: { type: String, default: '' },
     amount: { type: String, default: '0.00' },
     total: { type: String, default: '0.00' },
+    paymentStatus: { type: String, enum: ['PAID', 'UNPAID', 'PARTIAL'], default: 'UNPAID' },
+    paymentMode: { type: String, enum: ['CASH', 'UPI', 'BANK', 'CREDIT'], default: 'CREDIT' },
+    paidAmount: { type: String, default: '0.00' },
+    notes: { type: String, default: '' },
     date: { type: String, required: true },
     pdfData: { type: String, default: '' },
     pdfName: { type: String, default: '' },

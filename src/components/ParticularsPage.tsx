@@ -18,15 +18,12 @@ import {
   Chip,
   Grid,
   Divider,
-  InputBase,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
-import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
-import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import {
   CustomersApi,
   CompaniesApi,
@@ -34,6 +31,7 @@ import {
   PriceListsApi,
   ParticularsApi,
 } from '../services/api';
+import { getStoredSettings } from './SettingsPage';
 import { BillPrintModal } from './BillPrintModal';
 import type { BillPrintData } from './BillPrintTemplate';
 
@@ -59,43 +57,101 @@ interface ParticularsPageProps {
   initialCustomerName?: string;
 }
 
+const DRAFT_BILL_STORAGE_KEY = 'dheeksha_draft_bill';
+
+interface DraftBillState {
+  customerName?: string;
+  billNo?: string;
+  billDate?: string;
+  discount?: string;
+  transport?: string;
+  packing?: string;
+  tax?: string;
+  productRows?: ProductRowItem[];
+}
+
+const getSavedDraft = (): DraftBillState => {
+  try {
+    const raw = localStorage.getItem(DRAFT_BILL_STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Failed to load draft bill from localStorage', e);
+  }
+  return {};
+};
+
 export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName }) => {
+  const [storeSettings, setStoreSettings] = useState(() => getStoredSettings());
+  const draft = useMemo(() => getSavedDraft(), []);
+
   // Dropdown options
   const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
-  const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
+  const [, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [productOptions, setProductOptions] = useState<ProductCatalogOption[]>([]);
 
-  // Bill Form State
+  // Bill Form State (Restores from Draft if page was refreshed)
   const [customerName, setCustomerName] = useState<string>(() => {
-    return initialCustomerName || localStorage.getItem('dheeksha_active_customer') || '';
+    return initialCustomerName || draft.customerName || '';
   });
-  const [company, setCompany] = useState<string>('Dheeksha Trade');
-  const [billNo, setBillNo] = useState<string>('');
+  const [company, setCompany] = useState<string>(() => {
+    return storeSettings.companyName || 'Dheeksha Trade Link';
+  });
+  const [billNo, setBillNo] = useState<string>(() => draft.billNo || '');
   const [billDate, setBillDate] = useState<string>(() => {
+    if (draft.billDate) return draft.billDate;
     const today = new Date();
     return today.toLocaleDateString('en-GB').replace(/\//g, '-');
   });
-  const [discount, setDiscount] = useState<string>('0');
-  const [transport, setTransport] = useState<string>('0');
-  const [packing, setPacking] = useState<string>('0');
-  const [tax, setTax] = useState<string>('0');
+  const [discount, setDiscount] = useState<string>(() => draft.discount ?? '0');
+  const [transport, setTransport] = useState<string>(() => draft.transport ?? '0');
+  const [packing, setPacking] = useState<string>(() => draft.packing ?? '0');
+  const [tax, setTax] = useState<string>(() => draft.tax ?? '0');
 
   // Product Entry Form State
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('1');
   const [rate, setRate] = useState<string>('0');
   const [unit, setUnit] = useState<string>('Box');
-  const [productRows, setProductRows] = useState<ProductRowItem[]>([]);
+  const [productRows, setProductRows] = useState<ProductRowItem[]>(() => draft.productRows || []);
   const [savingBill, setSavingBill] = useState<boolean>(false);
-
-  // Recent Bills State
-  const [recentBills, setRecentBills] = useState<any[]>([]);
-  const [loadingRecent, setLoadingRecent] = useState<boolean>(true);
-  const [billSearchTerm, setBillSearchTerm] = useState<string>('');
 
   // Print Preview Modal State
   const [printModalOpen, setPrintModalOpen] = useState<boolean>(false);
   const [selectedBillForPrint, setSelectedBillForPrint] = useState<BillPrintData | null>(null);
+
+  // Auto-persist draft bill to localStorage
+  useEffect(() => {
+    const draftPayload: DraftBillState = {
+      customerName,
+      billNo,
+      billDate,
+      discount,
+      transport,
+      packing,
+      tax,
+      productRows,
+    };
+    try {
+      localStorage.setItem(DRAFT_BILL_STORAGE_KEY, JSON.stringify(draftPayload));
+    } catch (e) {
+      console.warn('Failed to auto-save draft bill to localStorage', e);
+    }
+  }, [customerName, billNo, billDate, discount, transport, packing, tax, productRows]);
+
+  // Listen for settings update (when user updates company name/logo in Settings)
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      const updated = getStoredSettings();
+      setStoreSettings(updated);
+      setCompany(updated.companyName || 'Dheeksha Trade Link');
+    };
+    window.addEventListener('dheeksha_settings_updated', handleSettingsUpdate);
+    return () => {
+      window.removeEventListener('dheeksha_settings_updated', handleSettingsUpdate);
+    };
+  }, []);
 
   // Load Dropdown Options (Customers, Companies, Unified Products & Price List)
   const loadOptions = async () => {
@@ -110,16 +166,13 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
       if (Array.isArray(custRes) && custRes.length > 0) {
         const mapped = custRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
         setCustomerOptions(mapped);
-        if (!customerName && mapped.length > 0) {
-          setCustomerName(mapped[0].name);
-        }
       }
 
       if (Array.isArray(compRes) && compRes.length > 0) {
         const mapped = compRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
         setCompanyOptions(mapped);
-        if (mapped.length > 0 && !company) {
-          setCompany(mapped[0].name);
+        if (mapped.length > 0 && (!company || company === 'Dheeksha Trade' || company === 'Dheeksha Trade Link')) {
+          setCompany(storeSettings.companyName || mapped[0].name);
         }
       }
 
@@ -185,23 +238,16 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     }
   };
 
-  // Fetch Recent Bills
-  const fetchRecentBills = async () => {
-    try {
-      setLoadingRecent(true);
-      const bills = await ParticularsApi.getAll();
-      setRecentBills(Array.isArray(bills) ? bills : []);
-    } catch (err) {
-      console.error('Failed to fetch recent bills:', err);
-    } finally {
-      setLoadingRecent(false);
-    }
+  // Always keep date current today
+  const refreshDate = () => {
+    const today = new Date();
+    setBillDate(today.toLocaleDateString('en-GB').replace(/\//g, '-'));
   };
 
   useEffect(() => {
     loadOptions();
     fetchNextBillNo();
-    fetchRecentBills();
+    refreshDate();
   }, []);
 
   // Update customer name if prop changes
@@ -222,7 +268,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     const amt = (qNum * rNum).toFixed(2);
 
     const newRow: ProductRowItem = {
-      id: `row-${Date.now()}-${Math.random()}`,
+      id: `row-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       particular: selectedProduct.trim(),
       quantity: String(qNum),
       rate: String(rNum),
@@ -285,7 +331,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
         billNo: billNo.trim() || `INV-${Date.now().toString().slice(-4)}`,
         date: billDate,
         customerName: customerName.trim(),
-        companyName: company || 'Dheeksha Trade',
+        companyName: company || storeSettings.companyName || 'General',
         transport: transport || '0',
         caseCount: String(totalCases),
         discount: discount || '0',
@@ -303,7 +349,6 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
       };
 
       await ParticularsApi.create(payload);
-      localStorage.setItem('dheeksha_active_customer', customerName.trim());
 
       if (andPrint) {
         const printData: BillPrintData = {
@@ -326,12 +371,15 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
 
       // Reset Bill Form & Reload Recent Bills
       setProductRows([]);
+      setCustomerName('');
       setDiscount('0');
       setTransport('0');
       setPacking('0');
       setTax('0');
+      localStorage.removeItem(DRAFT_BILL_STORAGE_KEY);
+      localStorage.removeItem('dheeksha_active_customer');
       fetchNextBillNo();
-      fetchRecentBills();
+      refreshDate();
 
       if (!andPrint) {
         alert(`Bill #${payload.billNo} saved successfully!`);
@@ -344,59 +392,22 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     }
   };
 
-  // Delete Recent Bill
-  const handleDeleteRecentBill = async (bill: any) => {
-    const id = bill._id || bill.id;
-    if (!id) return;
-    if (!window.confirm(`Delete Bill #${bill.billNo || ''} for ${bill.customerName}?`)) return;
-
-    try {
-      await ParticularsApi.delete(id);
-      setRecentBills((prev) => prev.filter((b) => (b._id || b.id) !== id));
-    } catch (err: any) {
-      console.error('Failed to delete bill:', err);
-      alert(err.message || 'Error deleting bill');
+  // Clear Draft Bill Form
+  const handleClearDraft = () => {
+    if (productRows.length > 0 || customerName.trim() !== '') {
+      if (!window.confirm('Are you sure you want to clear this draft bill?')) return;
     }
+    setProductRows([]);
+    setCustomerName('');
+    setDiscount('0');
+    setTransport('0');
+    setPacking('0');
+    setTax('0');
+    localStorage.removeItem(DRAFT_BILL_STORAGE_KEY);
+    localStorage.removeItem('dheeksha_active_customer');
+    fetchNextBillNo();
+    refreshDate();
   };
-
-  // Open Print for Recent Bill
-  const handlePrintRecentBill = (bill: any) => {
-    const printData: BillPrintData = {
-      billNo: bill.billNo || '',
-      date: bill.date || '',
-      customerName: bill.customerName || '',
-      companyName: bill.companyName || 'Dheeksha Trade',
-      transport: String(bill.transport || '0'),
-      caseCount: String(bill.caseCount || '0'),
-      discount: String(bill.discount || '0'),
-      packing: String(bill.packing || '0'),
-      tax: String(bill.tax || '0'),
-      amount: String(bill.amount || bill.total || '0'),
-      total: String(bill.total || '0'),
-      products: (bill.products || []).map((p: any) => ({
-        particular: p.particular || p.name || '',
-        quantity: p.quantity || '0',
-        rate: p.rate || '0',
-        pktUnit: p.pktUnit || 'Box',
-        amount: p.amount || '0',
-      })),
-    };
-    setSelectedBillForPrint(printData);
-    setPrintModalOpen(true);
-  };
-
-  // Filtered recent bills
-  const filteredRecentBills = useMemo(() => {
-    if (!billSearchTerm.trim()) return recentBills;
-    const term = billSearchTerm.toLowerCase().trim();
-    return recentBills.filter(
-      (b) =>
-        (b.billNo && b.billNo.toLowerCase().includes(term)) ||
-        (b.customerName && b.customerName.toLowerCase().includes(term)) ||
-        (b.companyName && b.companyName.toLowerCase().includes(term)) ||
-        (b.date && b.date.toLowerCase().includes(term))
-    );
-  }, [recentBills, billSearchTerm]);
 
   return (
     <Box
@@ -428,11 +439,13 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Chip
-            icon={<ReceiptLongRoundedIcon sx={{ color: '#92400E !important' }} />}
-            label={`Total Bills: ${recentBills.length}`}
-            sx={{ backgroundColor: '#FFFBEB', color: '#92400E', fontWeight: 700, border: '1px solid #FDE68A' }}
-          />
+          {productRows.length > 0 && (
+            <Chip
+              label={`Draft Auto-Saved (${productRows.length} items)`}
+              size="small"
+              sx={{ backgroundColor: '#FEF3C7', color: '#B45309', fontWeight: 800, border: '1px solid #FCD34D' }}
+            />
+          )}
         </Box>
       </Box>
 
@@ -466,63 +479,80 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                   freeSolo
                   size="small"
                   options={customerOptions.map((c) => c.name)}
-                  value={customerName}
-                  onInputChange={(_, val) => setCustomerName(val)}
+                  value={customerName || ''}
+                  onChange={(_, val) => setCustomerName(val || '')}
+                  onInputChange={(_, val) => setCustomerName(val || '')}
                   renderInput={(params) => (
                     <TextField
                       {...params}
                       placeholder="Select or enter customer name..."
-                      slotProps={{ input: { sx: { fontSize: '13.5px', fontWeight: 600 } } }}
+                      sx={{
+                        '& .MuiInputBase-input': { fontSize: '13.5px', fontWeight: 600 },
+                      }}
                     />
                   )}
                 />
               </Box>
 
-              {/* Company / Supplier */}
-              <Box>
-                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
-                  Billed By (Company)
-                </Typography>
-                <Autocomplete
-                  freeSolo
-                  size="small"
-                  options={companyOptions.map((c) => c.name)}
-                  value={company}
-                  onInputChange={(_, val) => setCompany(val)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="e.g. Dheeksha Trade..."
-                      slotProps={{ input: { sx: { fontSize: '13.5px', fontWeight: 600 } } }}
-                    />
-                  )}
-                />
-              </Box>
-
-              {/* Bill No & Date in single row */}
+              {/* Bill No & Date (Auto-generated & Non-editable / Read-only) */}
               <Grid container spacing={1.5}>
                 <Grid size={{ xs: 6 }}>
-                  <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
-                    Bill / Inv No
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58' }}>
+                      Bill / Inv No
+                    </Typography>
+                    <Tooltip title="Auto Generated (Protected)" arrow>
+                      <LockOutlinedIcon sx={{ fontSize: 13, color: '#9CA3AF' }} />
+                    </Tooltip>
+                  </Box>
                   <TextField
                     fullWidth
                     size="small"
                     value={billNo}
-                    onChange={(e) => setBillNo(e.target.value)}
-                    slotProps={{ input: { sx: { fontSize: '13.5px', fontWeight: 700, color: '#B91C1C' } } }}
+                    disabled
+                    sx={{
+                      backgroundColor: '#FEF2F2',
+                      borderRadius: '6px',
+                      '& .MuiInputBase-input': {
+                        fontSize: '13.5px',
+                        fontWeight: 800,
+                        color: '#B91C1C !important',
+                        WebkitTextFillColor: '#B91C1C !important',
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#FECACA !important',
+                      },
+                    }}
                   />
                 </Grid>
+
                 <Grid size={{ xs: 6 }}>
-                  <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
-                    Bill Date
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58' }}>
+                      Bill Date
+                    </Typography>
+                    <Tooltip title="Auto Set to Today" arrow>
+                      <LockOutlinedIcon sx={{ fontSize: 13, color: '#9CA3AF' }} />
+                    </Tooltip>
+                  </Box>
                   <TextField
                     fullWidth
                     size="small"
                     value={billDate}
-                    onChange={(e) => setBillDate(e.target.value)}
-                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
+                    disabled
+                    sx={{
+                      backgroundColor: '#F8FAFC',
+                      borderRadius: '6px',
+                      '& .MuiInputBase-input': {
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: '#475569 !important',
+                        WebkitTextFillColor: '#475569 !important',
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#E2E8F0 !important',
+                      },
+                    }}
                   />
                 </Grid>
               </Grid>
@@ -544,7 +574,9 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                     size="small"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
-                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
                   />
                 </Grid>
 
@@ -557,7 +589,9 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                     size="small"
                     value={transport}
                     onChange={(e) => setTransport(e.target.value)}
-                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
                   />
                 </Grid>
 
@@ -570,7 +604,9 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                     size="small"
                     value={packing}
                     onChange={(e) => setPacking(e.target.value)}
-                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
                   />
                 </Grid>
 
@@ -583,12 +619,14 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                     size="small"
                     value={tax}
                     onChange={(e) => setTax(e.target.value)}
-                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
                   />
                 </Grid>
               </Grid>
 
-              {/* Summary Total Card */}
+              {/* Summary Total Card with Complete Breakdown */}
               <Box
                 sx={{
                   p: 2,
@@ -598,21 +636,60 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                   mt: 1,
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                  <Typography sx={{ fontSize: '13px', color: '#786C58', fontWeight: 600 }}>Subtotal:</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
+                  <Typography sx={{ fontSize: '13px', color: '#786C58', fontWeight: 600 }}>Subtotal (Items):</Typography>
                   <Typography sx={{ fontSize: '13px', color: '#1F1714', fontWeight: 700 }}>
                     ₹{subtotal.toFixed(2)}
                   </Typography>
                 </Box>
+
                 {discountAmount > 0 && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
                     <Typography sx={{ fontSize: '13px', color: '#059669', fontWeight: 600 }}>Discount:</Typography>
                     <Typography sx={{ fontSize: '13px', color: '#059669', fontWeight: 700 }}>
                       -₹{discountAmount.toFixed(2)}
                     </Typography>
                   </Box>
                 )}
+
+                {parseFloat(transport) > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>Transport Charges:</Typography>
+                    <Typography sx={{ fontSize: '12.5px', color: '#1F1714', fontWeight: 700 }}>
+                      +₹{parseFloat(transport).toFixed(2)}
+                    </Typography>
+                  </Box>
+                )}
+
+                {parseFloat(packing) > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>Packing Charges:</Typography>
+                    <Typography sx={{ fontSize: '12.5px', color: '#1F1714', fontWeight: 700 }}>
+                      +₹{parseFloat(packing).toFixed(2)}
+                    </Typography>
+                  </Box>
+                )}
+
+                {parseFloat(tax) > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>GST / Tax ({tax}%):</Typography>
+                    <Typography sx={{ fontSize: '12.5px', color: '#1F1714', fontWeight: 700 }}>
+                      +₹{(((Math.max(0, subtotal - discountAmount) + parseFloat(transport || '0') + parseFloat(packing || '0')) * parseFloat(tax)) / 100).toFixed(2)}
+                    </Typography>
+                  </Box>
+                )}
+
+                {totalCases > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '12px', color: '#92400E', fontWeight: 600 }}>Total Qty / Cases:</Typography>
+                    <Typography sx={{ fontSize: '12.5px', color: '#92400E', fontWeight: 700 }}>
+                      {totalCases}
+                    </Typography>
+                  </Box>
+                )}
+
                 <Divider sx={{ my: 1, borderColor: '#FDE68A' }} />
+
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#991B1B' }}>
                     Grand Total:
@@ -624,45 +701,66 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
               </Box>
 
               {/* Save & Print Action Buttons */}
-              <Box sx={{ display: 'flex', gap: 1.5, mt: 1 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => handleSaveBill(false)}
-                  disabled={savingBill || productRows.length === 0}
-                  sx={{
-                    borderColor: '#F59E0B',
-                    color: '#92400E',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    py: 1,
-                    borderRadius: '8px',
-                    '&:hover': { borderColor: '#B45309', backgroundColor: '#FFFBEB' },
-                  }}
-                >
-                  Save Bill
-                </Button>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => handleSaveBill(false)}
+                    disabled={savingBill || productRows.length === 0}
+                    sx={{
+                      borderColor: '#F59E0B',
+                      color: '#92400E',
+                      fontWeight: 700,
+                      textTransform: 'none',
+                      py: 1,
+                      borderRadius: '8px',
+                      '&:hover': { borderColor: '#B45309', backgroundColor: '#FFFBEB' },
+                    }}
+                  >
+                    Save Bill
+                  </Button>
 
-                <Button
-                  fullWidth
-                  variant="contained"
-                  disableElevation
-                  onClick={() => handleSaveBill(true)}
-                  disabled={savingBill || productRows.length === 0}
-                  startIcon={savingBill ? <CircularProgress size={16} color="inherit" /> : <PrintOutlinedIcon />}
-                  sx={{
-                    background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
-                    color: '#FFFFFF',
-                    fontWeight: 800,
-                    textTransform: 'none',
-                    py: 1,
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
-                    '&:hover': { background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)' },
-                  }}
-                >
-                  Save & Print
-                </Button>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    disableElevation
+                    onClick={() => handleSaveBill(true)}
+                    disabled={savingBill || productRows.length === 0}
+                    startIcon={savingBill ? <CircularProgress size={16} color="inherit" /> : <PrintOutlinedIcon />}
+                    sx={{
+                      background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+                      color: '#FFFFFF',
+                      fontWeight: 800,
+                      textTransform: 'none',
+                      py: 1,
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                      '&:hover': { background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)' },
+                    }}
+                  >
+                    Save & Print
+                  </Button>
+                </Box>
+
+                {(productRows.length > 0 || customerName.trim() !== '') && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={handleClearDraft}
+                    startIcon={<ClearRoundedIcon sx={{ fontSize: 16 }} />}
+                    sx={{
+                      color: '#991B1B',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      py: 0.4,
+                      '&:hover': { backgroundColor: '#FEF2F2' },
+                    }}
+                  >
+                    Clear Current Draft Form
+                  </Button>
+                )}
               </Box>
             </Box>
           </Paper>
@@ -767,7 +865,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                         sx={{
                           backgroundColor: '#FFFFFF',
                           borderRadius: '6px',
-                          '& .MuiOutlinedInput-root': {
+                          '& .MuiInputBase-input': {
                             fontSize: '13px',
                             fontWeight: 600,
                           },
@@ -786,10 +884,16 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                     type="number"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddProductItem();
+                      }
+                    }}
                     sx={{
                       backgroundColor: '#FFFFFF',
                       borderRadius: '6px',
-                      '& .MuiOutlinedInput-root': { fontSize: '13px', fontWeight: 600 },
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600, textAlign: 'center' },
                     }}
                   />
                 </Grid>
@@ -803,10 +907,16 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                     type="number"
                     value={rate}
                     onChange={(e) => setRate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddProductItem();
+                      }
+                    }}
                     sx={{
                       backgroundColor: '#FFFFFF',
                       borderRadius: '6px',
-                      '& .MuiOutlinedInput-root': { fontSize: '13px', fontWeight: 800, color: '#B91C1C' },
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 800, color: '#B91C1C' },
                     }}
                   />
                 </Grid>
@@ -917,225 +1027,6 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
           </Paper>
         </Grid>
       </Grid>
-
-      {/* Recent Bills Section */}
-      <Paper
-        elevation={0}
-        sx={{
-          mt: 3,
-          borderRadius: '14px',
-          border: '1.5px solid #FDE68A',
-          backgroundColor: '#FFFFFF',
-          boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Recent Bills Header */}
-        <Box
-          sx={{
-            background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
-            borderBottom: '2px solid #F59E0B',
-            px: { xs: 2, sm: 3 },
-            py: 1.5,
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: { xs: 'stretch', sm: 'center' },
-            justifyContent: 'space-between',
-            gap: 1.5,
-            minHeight: '56px',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Typography sx={{ color: '#FFFFFF', fontSize: '17px', fontWeight: 800 }}>
-              Recent Bills & Invoices
-            </Typography>
-            <Typography
-              sx={{
-                color: '#FEF08A',
-                fontSize: '12px',
-                fontWeight: 700,
-                backgroundColor: 'rgba(254, 240, 138, 0.2)',
-                px: 1.2,
-                py: 0.2,
-                borderRadius: '10px',
-              }}
-            >
-              {filteredRecentBills.length} bills
-            </Typography>
-          </Box>
-
-          {/* Search Box & Refresh */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '8px',
-                px: 1.2,
-                height: '36px',
-                width: { xs: '100%', sm: '220px' },
-                border: '1.5px solid #FDE68A',
-              }}
-            >
-              <SearchRoundedIcon sx={{ color: '#D97706', fontSize: 18, mr: 0.8 }} />
-              <InputBase
-                placeholder="Search bills..."
-                value={billSearchTerm}
-                onChange={(e) => setBillSearchTerm(e.target.value)}
-                sx={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  width: '100%',
-                  '& input': { p: 0, '&::placeholder': { color: '#A8998A' } },
-                }}
-              />
-              {billSearchTerm && (
-                <IconButton size="small" onClick={() => setBillSearchTerm('')} sx={{ p: 0.3 }}>
-                  <ClearRoundedIcon sx={{ fontSize: 15 }} />
-                </IconButton>
-              )}
-            </Box>
-
-            <Button
-              variant="contained"
-              size="small"
-              onClick={fetchRecentBills}
-              startIcon={<RefreshRoundedIcon sx={{ fontSize: 16 }} />}
-              sx={{
-                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                color: '#FFFFFF',
-                border: '1px solid rgba(254, 240, 138, 0.4)',
-                fontWeight: 700,
-                textTransform: 'none',
-                height: '36px',
-                borderRadius: '8px',
-                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.3)' },
-              }}
-            >
-              Refresh
-            </Button>
-          </Box>
-        </Box>
-
-        {/* Recent Bills Table */}
-        <TableContainer sx={{ maxHeight: '420px' }}>
-          <Table stickyHeader sx={{ width: '100%' }} aria-label="recent bills table">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
-                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '110px' }}>
-                  BILL NO
-                </TableCell>
-                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '110px' }}>
-                  DATE
-                </TableCell>
-                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB' }}>
-                  CUSTOMER NAME
-                </TableCell>
-                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB' }}>
-                  COMPANY
-                </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '90px' }}>
-                  ITEMS
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '130px' }}>
-                  TOTAL AMOUNT (₹)
-                </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '130px' }}>
-                  ACTIONS
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loadingRecent ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={32} sx={{ color: '#DC2626' }} />
-                  </TableCell>
-                </TableRow>
-              ) : filteredRecentBills.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#786C58' }}>
-                    {billSearchTerm ? `No bills matching "${billSearchTerm}" found.` : 'No bills created yet.'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRecentBills.map((bill, index) => {
-                  const isLast = index === filteredRecentBills.length - 1;
-                  const totalAmt = parseFloat(String(bill.total || bill.amount || '0').replace(/,/g, '')) || 0;
-                  const prodCount = (bill.products || []).length;
-
-                  return (
-                    <TableRow key={bill._id || bill.id || index} sx={{ '&:hover': { backgroundColor: '#FEFDF5' } }}>
-                      <TableCell sx={{ fontSize: '13.5px', fontWeight: 800, color: '#B91C1C', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                        #{bill.billNo}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#57463A', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                        {bill.date}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                        {bill.customerName}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '13px', color: '#786C58', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                        {bill.companyName || 'Dheeksha Trade'}
-                      </TableCell>
-                      <TableCell align="center" sx={{ borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                        <Chip
-                          label={`${prodCount} ${prodCount === 1 ? 'item' : 'items'}`}
-                          size="small"
-                          sx={{ fontSize: '11.5px', fontWeight: 700, backgroundColor: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}
-                        />
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '14.5px', fontWeight: 800, color: '#B91C1C', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                        ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell align="center" sx={{ borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                          {/* Print Invoice */}
-                          <Tooltip title="Print / View Invoice" arrow>
-                            <IconButton
-                              size="small"
-                              onClick={() => handlePrintRecentBill(bill)}
-                              sx={{
-                                color: '#D97706',
-                                backgroundColor: '#FFFBEB',
-                                border: '1px solid #FDE68A',
-                                borderRadius: '6px',
-                                p: 0.6,
-                                '&:hover': { color: '#FFFFFF', backgroundColor: '#D97706' },
-                              }}
-                            >
-                              <PrintOutlinedIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </Tooltip>
-
-                          {/* Delete Bill */}
-                          <Tooltip title="Delete Bill" arrow>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteRecentBill(bill)}
-                              sx={{
-                                color: '#DC2626',
-                                backgroundColor: '#FEF2F2',
-                                border: '1px solid #FECACA',
-                                borderRadius: '6px',
-                                p: 0.6,
-                                '&:hover': { color: '#FFFFFF', backgroundColor: '#DC2626' },
-                              }}
-                            >
-                              <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
 
       {/* Print Bill Modal */}
       {printModalOpen && selectedBillForPrint && (

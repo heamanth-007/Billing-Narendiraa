@@ -13,6 +13,9 @@ export interface BillPrintData {
   billNo: string;
   date: string;
   customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  customerGst?: string;
   companyName: string;
   preparedBy?: string;
   phone?: string;
@@ -26,6 +29,10 @@ export interface BillPrintData {
   packing?: string | number;
   tax?: string | number;
   total?: string | number;
+  paymentStatus?: string;
+  paymentMode?: string;
+  paidAmount?: string | number;
+  notes?: string;
   pdfData?: string;
   pdfUrl?: string;
   pdfName?: string;
@@ -36,7 +43,17 @@ interface BillPrintTemplateProps {
 }
 
 export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) => {
-  const storeSettings = getStoredSettings();
+  const [storeSettings, setStoreSettings] = React.useState(() => getStoredSettings());
+
+  React.useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setStoreSettings(getStoredSettings());
+    };
+    window.addEventListener('dheeksha_settings_updated', handleSettingsUpdate);
+    return () => {
+      window.removeEventListener('dheeksha_settings_updated', handleSettingsUpdate);
+    };
+  }, []);
 
   // Calculate Subtotal from Products or bill.amount
   const prodSubtotal = (bill.products || []).reduce((acc, p) => {
@@ -107,8 +124,15 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
     return acc + q;
   }, 0);
 
-  const displayCompanyName = bill.companyName || storeSettings.companyName || 'Dheeksha Trade Link';
-  const preparedBy = bill.preparedBy || storeSettings.ownerName || 'Siva';
+  const displayCompanyName =
+    bill.companyName &&
+    bill.companyName !== 'Dheeksha Trade' &&
+    bill.companyName !== 'Dheeksha Trade Link' &&
+    bill.companyName.trim() !== ''
+      ? bill.companyName
+      : storeSettings.companyName || 'Dheeksha Trade Link';
+
+  const preparedBy = bill.preparedBy || storeSettings.ownerName || 'Admin';
   const transportName = bill.transport || '-';
 
   // Check for uploaded Lorry / Godown receipt (pdfData or pdfUrl)
@@ -191,7 +215,7 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
         </div>
         <div>
           <span>Company Name: </span>
-          <strong>{bill.companyName || '-'}</strong>
+          <strong>{displayCompanyName || '-'}</strong>
         </div>
         <div>
           <span>Total Amount: </span>

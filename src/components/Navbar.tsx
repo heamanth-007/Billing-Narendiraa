@@ -147,7 +147,7 @@ export const Navbar: FC<NavbarProps> = ({
               textTransform: 'uppercase',
             }}
           >
-            {companySettings.city || 'Sivakasi'} Fireworks & Trade
+            {companySettings.tagline ? companySettings.tagline : `${companySettings.city || 'Sivakasi'} Fireworks & Trade`}
           </Typography>
         </Box>
       </Box>

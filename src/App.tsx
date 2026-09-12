@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import { theme } from './theme/theme';
 import { Navbar, type NavTab } from './components/Navbar';
@@ -9,7 +9,7 @@ import { ProductsPage } from './components/ProductsPage';
 import { AllCustomersPage } from './components/AllCustomersPage';
 import { AddCustomerPage } from './components/AddCustomerPage';
 import { ParticularsPage } from './components/ParticularsPage';
-import { SettingsPage } from './components/SettingsPage';
+import { SettingsPage, getStoredSettings } from './components/SettingsPage';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -17,9 +17,23 @@ function App() {
   });
   const [activeTab, setActiveTab] = useState<NavTab>('All Customers');
   const [customerSubView, setCustomerSubView] = useState<'list' | 'add'>('list');
-  const [selectedCustomerName, setSelectedCustomerName] = useState<string>(() => {
-    return localStorage.getItem('dheeksha_active_customer') || '';
-  });
+  const [selectedCustomerName, setSelectedCustomerName] = useState<string>('');
+
+  useEffect(() => {
+    // Clear legacy sticky customer if present
+    localStorage.removeItem('dheeksha_active_customer');
+    const updateTitle = () => {
+      const settings = getStoredSettings();
+      if (settings.companyName) {
+        document.title = `${settings.companyName} - Billing & Management`;
+      }
+    };
+    updateTitle();
+    window.addEventListener('dheeksha_settings_updated', updateTitle);
+    return () => {
+      window.removeEventListener('dheeksha_settings_updated', updateTitle);
+    };
+  }, []);
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
@@ -28,6 +42,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('dheeksha_auth_token');
     localStorage.removeItem('dheeksha_auth_user');
+    localStorage.removeItem('dheeksha_active_customer');
     setIsAuthenticated(false);
   };
 
@@ -36,11 +51,13 @@ function App() {
     if (tab === 'All Customers') {
       setCustomerSubView('list');
     }
+    if (tab === 'Billing') {
+      setSelectedCustomerName('');
+    }
   };
 
   const handleCustomerSelectedForParticular = (customerName: string) => {
     setSelectedCustomerName(customerName);
-    localStorage.setItem('dheeksha_active_customer', customerName);
     setActiveTab('Billing');
   };
 

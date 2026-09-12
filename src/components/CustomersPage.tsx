@@ -32,6 +32,7 @@ import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import { CustomersApi, AccountsApi, CompaniesApi } from '../services/api';
 import { printCustomerListDirectly } from '../utils/printUtils';
 import { DateRangePrintModal } from './DateRangePrintModal';
+import { getStoredSettings } from './SettingsPage';
 
 export interface Customer {
   _id?: string;
@@ -176,8 +177,9 @@ export const CustomersPage: FC<CustomersPageProps> = ({ onAddNew, onSelectCustom
   const handleOpenPayment = (customer: Customer) => {
     setPaymentCustomer(customer);
     const due = customer.pendingDue || 0;
+    const storeSettings = getStoredSettings();
     setPaymentForm({
-      companyName: companies.length > 0 ? companies[0].name : 'General',
+      companyName: companies.length > 0 ? companies[0].name : (storeSettings.companyName || 'General'),
       creditAmount: due > 0 ? String(due) : '',
       date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
     });

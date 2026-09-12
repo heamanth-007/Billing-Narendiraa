@@ -56,6 +56,9 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
   try {
     const {
       customerName,
+      customerPhone,
+      customerAddress,
+      customerGst,
       caseCount,
       companyName,
       discount,
@@ -65,6 +68,10 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
       tax,
       amount,
       total,
+      paymentStatus,
+      paymentMode,
+      paidAmount,
+      notes,
       date,
       products,
     } = req.body;
@@ -85,8 +92,58 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
       finalBillNo = (maxNum + 1).toString().padStart(4, '0');
     }
 
+    const trimmedCustName = (customerName || 'General').trim();
+
+    // Auto-create / update Customer in database if needed
+    try {
+      const { Customer } = await import('../models/Customer');
+      const existingCustomer = await Customer.findOne({
+        name: { $regex: new RegExp(`^${escapeRegex(trimmedCustName)}$`, 'i') },
+      });
+      if (!existingCustomer && trimmedCustName.toLowerCase() !== 'general') {
+        const allCusts = await Customer.find().sort({ createdAt: 1 });
+        let maxId = 0;
+        allCusts.forEach((c) => {
+          if (c.idCode) {
+            const m = c.idCode.match(/\d+/);
+            if (m) {
+              const n = parseInt(m[0], 10);
+              if (n > maxId) maxId = n;
+            }
+          }
+        });
+        await Customer.create({
+          name: trimmedCustName,
+          mobile: customerPhone || '',
+          address: customerAddress || '',
+          gst: customerGst || '',
+          idCode: `#${(maxId + 1).toString().padStart(4, '0')}`,
+        });
+      } else if (existingCustomer && (customerPhone || customerAddress || customerGst)) {
+        if (!existingCustomer.mobile && customerPhone) existingCustomer.mobile = customerPhone;
+        if (!existingCustomer.address && customerAddress) existingCustomer.address = customerAddress;
+        if (!existingCustomer.gst && customerGst) existingCustomer.gst = customerGst;
+        await existingCustomer.save();
+      }
+    } catch (custSyncErr) {
+      console.warn('[Customer Sync Warn]:', custSyncErr);
+    }
+
+    const billTotalNum = parseFloat(String(total || amount || '0').replace(/,/g, '')) || 0;
+    const paidNum = parseFloat(String(paidAmount || (paymentStatus === 'PAID' ? billTotalNum : '0')).replace(/,/g, '')) || 0;
+
+    let computedStatus: 'PAID' | 'UNPAID' | 'PARTIAL' = 'UNPAID';
+    if (paymentStatus === 'PAID' || (paidNum >= billTotalNum && billTotalNum > 0)) {
+      computedStatus = 'PAID';
+    } else if (paidNum > 0 && paidNum < billTotalNum) {
+      computedStatus = 'PARTIAL';
+    }
+
     const particular = await Particular.create({
-      customerName: customerName || 'General',
+      customerName: trimmedCustName,
+      customerPhone: customerPhone || '',
+      customerAddress: customerAddress || '',
+      customerGst: customerGst || '',
       caseCount: caseCount || '0',
       companyName: companyName || 'General',
       discount: discount || '0',
@@ -96,12 +153,15 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
       tax: tax || '0',
       amount: amount || total || '0.00',
       total: total || amount || '0.00',
+      paymentStatus: computedStatus,
+      paymentMode: paymentMode || (computedStatus === 'PAID' ? 'CASH' : 'CREDIT'),
+      paidAmount: paidNum > 0 ? paidNum.toFixed(2) : '0.00',
+      notes: notes || '',
       date: date || new Date().toISOString().split('T')[0],
       products: products || [],
     });
 
-    // Automatically log to Account Ledger
-    const billTotalNum = parseFloat(String(particular.total || particular.amount).replace(/,/g, '')) || 0;
+    // 1. Automatically log Bill DEBIT to Account Ledger
     if (billTotalNum > 0) {
       await AccountLedger.create({
         particularId: String(particular._id),
@@ -114,7 +174,24 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
         balance: '0.00',
         type: 'BILL',
       });
+    }
 
+    // 2. If bill is Paid or Partial Paid, log Payment CREDIT to Account Ledger
+    if (paidNum > 0) {
+      await AccountLedger.create({
+        particularId: String(particular._id),
+        billNo: particular.billNo,
+        customerName: particular.customerName,
+        date: particular.date,
+        companyName: particular.companyName,
+        debit: '0.00',
+        credit: paidNum.toFixed(2),
+        balance: '0.00',
+        type: 'PAYMENT',
+      });
+    }
+
+    if (billTotalNum > 0 || paidNum > 0) {
       await recalculateCustomerBalance(particular.customerName);
     }
 
@@ -137,6 +214,9 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
 
     const {
       customerName,
+      customerPhone,
+      customerAddress,
+      customerGst,
       caseCount,
       companyName,
       discount,
@@ -146,6 +226,10 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
       tax,
       amount,
       total,
+      paymentStatus,
+      paymentMode,
+      paidAmount,
+      notes,
       date,
       products,
     } = req.body;
@@ -153,7 +237,10 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
     const updatedParticular = await Particular.findByIdAndUpdate(
       id,
       {
-        ...(customerName !== undefined && { customerName }),
+        ...(customerName !== undefined && { customerName: String(customerName).trim() }),
+        ...(customerPhone !== undefined && { customerPhone }),
+        ...(customerAddress !== undefined && { customerAddress }),
+        ...(customerGst !== undefined && { customerGst }),
         ...(caseCount !== undefined && { caseCount }),
         ...(companyName !== undefined && { companyName }),
         ...(discount !== undefined && { discount }),
@@ -163,6 +250,10 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
         ...(tax !== undefined && { tax }),
         ...(amount !== undefined && { amount }),
         ...(total !== undefined && { total }),
+        ...(paymentStatus !== undefined && { paymentStatus }),
+        ...(paymentMode !== undefined && { paymentMode }),
+        ...(paidAmount !== undefined && { paidAmount }),
+        ...(notes !== undefined && { notes }),
         ...(date !== undefined && { date }),
         ...(products !== undefined && { products }),
       },
@@ -174,25 +265,23 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
       return;
     }
 
-    // Update AccountLedger entry
+    // Update or re-sync AccountLedger entries (BILL and PAYMENT)
     const billTotalNum = parseFloat(String(updatedParticular.total || updatedParticular.amount || '0').replace(/,/g, '')) || 0;
-    
-    // Find or update AccountLedger
-    const ledgerEntry = await AccountLedger.findOne({
-      $or: [
-        { particularId: String(id) },
-        { particularId: String(existing._id) },
-        ...(existing.billNo ? [{ billNo: String(existing.billNo).trim() }] : []),
-      ],
+    const paidNum = parseFloat(String(updatedParticular.paidAmount || (updatedParticular.paymentStatus === 'PAID' ? billTotalNum : '0')).replace(/,/g, '')) || 0;
+
+    // 1. BILL Ledger entry
+    const billLedgerEntry = await AccountLedger.findOne({
+      particularId: String(id),
+      type: 'BILL',
     });
 
-    if (ledgerEntry) {
-      ledgerEntry.customerName = updatedParticular.customerName;
-      ledgerEntry.companyName = updatedParticular.companyName;
-      ledgerEntry.date = updatedParticular.date;
-      ledgerEntry.billNo = updatedParticular.billNo;
-      ledgerEntry.debit = billTotalNum.toFixed(2);
-      await ledgerEntry.save();
+    if (billLedgerEntry) {
+      billLedgerEntry.customerName = updatedParticular.customerName;
+      billLedgerEntry.companyName = updatedParticular.companyName;
+      billLedgerEntry.date = updatedParticular.date;
+      billLedgerEntry.billNo = updatedParticular.billNo;
+      billLedgerEntry.debit = billTotalNum.toFixed(2);
+      await billLedgerEntry.save();
     } else if (billTotalNum > 0) {
       await AccountLedger.create({
         particularId: String(updatedParticular._id),
@@ -204,6 +293,37 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
         credit: '0.00',
         balance: '0.00',
         type: 'BILL',
+      });
+    }
+
+    // 2. PAYMENT Ledger entry
+    const paymentLedgerEntry = await AccountLedger.findOne({
+      particularId: String(id),
+      type: 'PAYMENT',
+    });
+
+    if (paymentLedgerEntry) {
+      if (paidNum > 0) {
+        paymentLedgerEntry.customerName = updatedParticular.customerName;
+        paymentLedgerEntry.companyName = updatedParticular.companyName;
+        paymentLedgerEntry.date = updatedParticular.date;
+        paymentLedgerEntry.billNo = updatedParticular.billNo;
+        paymentLedgerEntry.credit = paidNum.toFixed(2);
+        await paymentLedgerEntry.save();
+      } else {
+        await AccountLedger.findByIdAndDelete(paymentLedgerEntry._id);
+      }
+    } else if (paidNum > 0) {
+      await AccountLedger.create({
+        particularId: String(updatedParticular._id),
+        billNo: updatedParticular.billNo,
+        customerName: updatedParticular.customerName,
+        date: updatedParticular.date,
+        companyName: updatedParticular.companyName,
+        debit: '0.00',
+        credit: paidNum.toFixed(2),
+        balance: '0.00',
+        type: 'PAYMENT',
       });
     }
 
@@ -237,24 +357,13 @@ export const deleteParticular = async (req: Request, res: Response, next: NextFu
     // 2. Delete Particular Document
     await Particular.findByIdAndDelete(req.params.id);
 
-    // 3. Cascade Delete: Delete matching AccountLedger entry comprehensively
-    const orConditions: any[] = [
-      { particularId: String(req.params.id) },
-      { particularId: String(particular._id) },
-    ];
-    if (particular.billNo && String(particular.billNo).trim() !== '') {
-      orConditions.push({ billNo: String(particular.billNo).trim() });
-    }
-    if (particular.customerName && particular.date) {
-      orConditions.push({
-        customerName: { $regex: new RegExp(`^${escapeRegex(particular.customerName.trim())}$`, 'i') },
-        companyName: { $regex: new RegExp(`^${escapeRegex(particular.companyName.trim())}$`, 'i') },
-        date: particular.date,
-        type: 'BILL',
-      });
-    }
-
-    await AccountLedger.deleteMany({ $or: orConditions });
+    // 3. Cascade Delete: Delete matching AccountLedger entries (BILL and PAYMENT)
+    await AccountLedger.deleteMany({
+      $or: [
+        { particularId: String(req.params.id) },
+        { particularId: String(particular._id) },
+      ],
+    });
 
     // 4. Recalculate balance for this customer
     await recalculateCustomerBalance(customerName);

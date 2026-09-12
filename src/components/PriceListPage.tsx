@@ -53,6 +53,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import Tesseract from 'tesseract.js';
 import { PriceListsApi, CategoriesApi } from '../services/api';
+import { getStoredSettings } from './SettingsPage';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -1148,10 +1149,14 @@ export const PriceListPage: FC = () => {
       },
     ];
 
+    const storeSettings = getStoredSettings();
+    const compName = storeSettings.companyName || 'Company';
+    const cleanPrefix = compName.replace(/[^a-zA-Z0-9_-]/g, '_');
+
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'PriceList_Template');
-    XLSX.writeFile(workbook, 'Dheeksha_Price_List_Template.xlsx');
+    XLSX.writeFile(workbook, `${cleanPrefix}_Price_List_Template.xlsx`);
   };
 
   // Export current list to Excel
@@ -1160,6 +1165,10 @@ export const PriceListPage: FC = () => {
       alert('No price list items to export.');
       return;
     }
+    const storeSettings = getStoredSettings();
+    const compName = storeSettings.companyName || 'Company';
+    const cleanPrefix = compName.replace(/[^a-zA-Z0-9_-]/g, '_');
+
     const exportData = filteredItems.map((item, idx) => ({
       'SL.NO': item.slNo || idx + 1,
       'Item Name': item.itemName,
@@ -1175,13 +1184,18 @@ export const PriceListPage: FC = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Price_List');
-    XLSX.writeFile(workbook, `Dheeksha_Price_List_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `${cleanPrefix}_Price_List_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   // Print Price List Direct
   const handlePrintPriceList = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    const storeSettings = getStoredSettings();
+    const compName = storeSettings.companyName || 'Company Name';
+    const compUpper = compName.toUpperCase();
+    const compTagline = storeSettings.tagline || `Official Wholesale & Retail Price List • ${storeSettings.city || 'Sivakasi'}`;
 
     const rowsHtml = filteredItems
       .map(
@@ -1203,7 +1217,7 @@ export const PriceListPage: FC = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Dheeksha Trade - Price List</title>
+        <title>${compName} - Price List</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; color: #1f2937; }
           .header { text-align: center; border-bottom: 2px solid #dc2626; padding-bottom: 12px; margin-bottom: 16px; }
@@ -1223,8 +1237,8 @@ export const PriceListPage: FC = () => {
       </head>
       <body>
         <div class="header">
-          <div class="title">DHEEKSHA TRADE & FIREWORKS</div>
-          <div class="subtitle">Official Wholesale & Retail Price List</div>
+          <div class="title">${compUpper}</div>
+          <div class="subtitle">${compTagline}</div>
         </div>
         <div class="meta">
           <span><strong>Category:</strong> ${selectedCategory === 'ALL' ? 'All Products' : selectedCategory}</span>

@@ -75,6 +75,13 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
 
 export const updateCategory = async (req: Request, res: Response): Promise<void> => {
   try {
+    const oldCategory = await Category.findById(req.params.id);
+    if (!oldCategory) {
+      res.status(404).json({ success: false, error: 'Category not found' });
+      return;
+    }
+
+    const oldName = oldCategory.name;
     const category = await Category.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
@@ -85,6 +92,23 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    // If category name was renamed, cascade update Products & PriceList
+    if (req.body.name && req.body.name.trim() !== oldName.trim()) {
+      const newName = req.body.name.trim();
+      const escapedOldName = oldName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const { Product } = await import('../models/Product');
+      const { default: PriceList } = await import('../models/PriceList');
+
+      await Product.updateMany(
+        { category: { $regex: new RegExp(`^${escapedOldName}$`, 'i') } },
+        { category: newName }
+      );
+      await PriceList.updateMany(
+        { category: { $regex: new RegExp(`^${escapedOldName}$`, 'i') } },
+        { category: newName }
+      );
+    }
+
     res.status(200).json({ success: true, data: category });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -93,11 +117,31 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
 
 export const deleteCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const category = await Category.findByIdAndDelete(req.params.id);
+    const category = await Category.findById(req.params.id);
     if (!category) {
       res.status(404).json({ success: false, error: 'Category not found' });
       return;
     }
+
+    const categoryName = category.name;
+    await Category.findByIdAndDelete(req.params.id);
+
+    // Cascade update: Reassign affected products and price list items to 'General'
+    if (categoryName && categoryName.trim()) {
+      const escapedName = categoryName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const { Product } = await import('../models/Product');
+      const { default: PriceList } = await import('../models/PriceList');
+
+      await Product.updateMany(
+        { category: { $regex: new RegExp(`^${escapedName}$`, 'i') } },
+        { category: 'General' }
+      );
+      await PriceList.updateMany(
+        { category: { $regex: new RegExp(`^${escapedName}$`, 'i') } },
+        { category: 'General' }
+      );
+    }
+
     res.status(200).json({ success: true, message: 'Category deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

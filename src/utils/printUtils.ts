@@ -1,4 +1,5 @@
 import type { BillPrintData } from '../components/BillPrintTemplate';
+import { getStoredSettings } from '../components/SettingsPage';
 
 /**
  * Robust date parser supporting DD-MM-YYYY, YYYY-MM-DD, DD/MM/YYYY, ISO, etc.
@@ -118,9 +119,22 @@ export const generateBillHtml = (bill: BillPrintData): string => {
     ? bill.caseCount
     : (bill.products || []).reduce((acc, p) => acc + (parseFloat(String(p.quantity)) || 0), 0);
 
-  const preparedBy = bill.preparedBy || 'S.Nagaraj';
+  const storeSettings = getStoredSettings();
+  const displayCompanyName =
+    bill.companyName &&
+    bill.companyName !== 'Dheeksha Trade' &&
+    bill.companyName !== 'Dheeksha Trade Link' &&
+    bill.companyName.trim() !== ''
+      ? bill.companyName
+      : storeSettings.companyName || 'Dheeksha Trade Link';
+
+  const preparedBy = bill.preparedBy || storeSettings.ownerName || 'Admin';
   const transportName = bill.transport && bill.transport.trim() !== '' && bill.transport !== '-' ? bill.transport.trim() : '-';
   const receiptSrc = bill.pdfData || bill.pdfUrl || '';
+  const cityLine = `${storeSettings.city || 'Sivakasi'}${storeSettings.state ? `, ${storeSettings.state}` : ''}`;
+  const gstinLine = storeSettings.gstin ? `GSTIN: ${storeSettings.gstin}` : '';
+  const phoneLine = storeSettings.phone ? `Mobile: ${storeSettings.phone}` : '';
+  const metaContact = [gstinLine, phoneLine].filter(Boolean).join(' | ');
 
   const productRowsHtml = (bill.products || []).map((item, idx) => {
     const numAmt = parseFloat(String(item.amount).replace(/,/g, '')) || 0;
@@ -141,7 +155,7 @@ export const generateBillHtml = (bill: BillPrintData): string => {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Bill #${bill.billNo || 'Invoice'} - Dheeksha Trade Link</title>
+  <title>Bill #${bill.billNo || 'Invoice'} - ${displayCompanyName}</title>
   <style>
     @page {
       size: A4 portrait;
@@ -281,15 +295,21 @@ export const generateBillHtml = (bill: BillPrintData): string => {
     <!-- Header -->
     <div class="top-header">
       <div class="signatory">${preparedBy}</div>
-      <div class="comp-name">Dheeksha Trade Link</div>
-      <div class="comp-city">Sivakasi</div>
+      ${
+        storeSettings.logoUrl
+          ? `<div style="margin-bottom:6px;"><img src="${storeSettings.logoUrl}" alt="Logo" style="max-height:55px; max-width:160px; object-fit:contain;" /></div>`
+          : ''
+      }
+      <div class="comp-name">${displayCompanyName}</div>
+      <div class="comp-city">${cityLine}</div>
+      ${metaContact ? `<div style="font-size:11.5px; font-weight:600; color:#64748B; margin-top:2px;">${metaContact}</div>` : ''}
     </div>
 
     <!-- Metadata Block -->
     <div class="meta-block">
       <div class="meta-row"><span class="meta-label">Bill No: </span><span class="meta-val">${bill.billNo || '-'}</span></div>
       <div class="meta-row"><span class="meta-label">Customer Name: </span><span class="meta-val">${bill.customerName || '-'}</span></div>
-      <div class="meta-row"><span class="meta-label">Company Name: </span><span class="meta-val">${bill.companyName || '-'}</span></div>
+      <div class="meta-row"><span class="meta-label">Company Name: </span><span class="meta-val">${displayCompanyName}</span></div>
       <div class="meta-row"><span class="meta-label">Total Amount: </span><span class="meta-val">${formattedTotal}</span></div>
       <div class="meta-row"><span class="meta-label">Transport Name: </span><span class="meta-val">${transportName}</span></div>
       <div class="meta-row"><span class="meta-label">Total No. of Cases: </span><span class="meta-val">${computedCases}</span></div>
@@ -393,6 +413,11 @@ export const generateCustomerListPrintHtml = (
   reportTitle = 'CUSTOMERS MASTER LEDGER & BALANCES REPORT',
   dateRangeText?: string
 ): string => {
+  const storeSettings = getStoredSettings();
+  const compName = (storeSettings.companyName || 'DHEEKSHA TRADE LINK').toUpperCase();
+  const compSub = storeSettings.tagline || `Wholesale & Retail Trading • ${storeSettings.city || 'Sivakasi'}`;
+  const phoneVal = storeSettings.phone || '+91 98765 43210';
+
   const currentDate = new Date().toLocaleDateString('en-GB', {
     day: '2-digit',
     month: '2-digit',
@@ -453,7 +478,7 @@ export const generateCustomerListPrintHtml = (
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>${reportTitle} - ${currentDate}</title>
+  <title>${reportTitle} - ${compName} - ${currentDate}</title>
   <style>
     @page {
       size: A4 landscape;
@@ -617,15 +642,15 @@ export const generateCustomerListPrintHtml = (
     <!-- Header Banner -->
     <div class="company-banner">
       <div>
-        <div class="comp-name">DHEEKSHA TRADE LINK</div>
-        <div class="comp-sub">Wholesale & Retail Trading • Sivakasi</div>
+        <div class="comp-name">${compName}</div>
+        <div class="comp-sub">${compSub}</div>
         <div class="report-heading">${reportTitle}</div>
         ${dateRangeText ? `<div class="date-badge">${dateRangeText}</div>` : ''}
       </div>
       <div class="meta-box">
         <div>Generated: <span class="meta-bold">${currentDate} ${currentTime}</span></div>
         <div>Total Records: <span class="meta-bold">${customers.length} Customers</span></div>
-        <div>Phone: +91 98765 43210</div>
+        <div>Phone: ${phoneVal}</div>
       </div>
     </div>
 
@@ -720,6 +745,10 @@ export const generateLedgerStatementHtml = (
   ledgerEntries: any[],
   dateRangeText?: string
 ): string => {
+  const storeSettings = getStoredSettings();
+  const compName = (storeSettings.companyName || 'DHEEKSHA TRADE LINK').toUpperCase();
+  const compSub = storeSettings.tagline || `Wholesale & Retail Trading • ${storeSettings.city || 'Sivakasi'}`;
+
   const currentDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
   let totalDeb = 0;
   let totalCred = 0;
@@ -750,7 +779,7 @@ export const generateLedgerStatementHtml = (
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Account Statement - ${customerName}</title>
+  <title>Account Statement - ${customerName} - ${compName}</title>
   <style>
     @page { size: A4 portrait; margin: 8mm 10mm; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #000; margin:0; padding:10px; }
@@ -769,8 +798,8 @@ export const generateLedgerStatementHtml = (
 <body>
   <div class="header">
     <div>
-      <div class="title">DHEEKSHA TRADE LINK</div>
-      <div class="sub">Wholesale & Retail Trading • Sivakasi</div>
+      <div class="title">${compName}</div>
+      <div class="sub">${compSub}</div>
       <h2 style="font-size:15px; margin-top:4px;">ACCOUNT STATEMENT: ${customerName}</h2>
       ${dateRangeText ? `<div class="date-badge">${dateRangeText}</div>` : ''}
     </div>
@@ -820,6 +849,10 @@ export const printLedgerStatementDirectly = (customerName: string, ledgerEntries
  * Print Particulars Bills Master List (A4 Standard)
  */
 export const generateParticularsListPrintHtml = (particulars: any[], dateRangeText?: string): string => {
+  const storeSettings = getStoredSettings();
+  const compName = (storeSettings.companyName || 'DHEEKSHA TRADE LINK').toUpperCase();
+  const compSub = storeSettings.tagline || `Wholesale & Retail Trading • ${storeSettings.city || 'Sivakasi'}`;
+
   const currentDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
   let totalSum = 0;
 
@@ -827,6 +860,9 @@ export const generateParticularsListPrintHtml = (particulars: any[], dateRangeTe
     const amt = parseFloat(String(p.total || p.amount || '0').replace(/,/g, '')) || 0;
     totalSum += amt;
     const countItems = (p.products || []).length;
+    const billCompName = (p.companyName && p.companyName !== 'Dheeksha Trade' && p.companyName !== 'Dheeksha Trade Link')
+      ? p.companyName
+      : storeSettings.companyName || '-';
 
     return `
       <tr>
@@ -834,7 +870,7 @@ export const generateParticularsListPrintHtml = (particulars: any[], dateRangeTe
         <td class="text-center" style="font-weight:800; color:#0B4DB7; width:75px;">#${p.billNo || '-'}</td>
         <td class="text-center" style="width:85px;">${p.date || '-'}</td>
         <td style="font-weight:700;">${p.customerName || '-'}</td>
-        <td>${p.companyName || '-'}</td>
+        <td>${billCompName}</td>
         <td class="text-center" style="width:60px;">${p.caseCount || '-'}</td>
         <td class="text-center" style="width:75px;">${countItems} items</td>
         <td class="text-right" style="font-weight:800; width:120px;">₹ ${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
@@ -847,7 +883,7 @@ export const generateParticularsListPrintHtml = (particulars: any[], dateRangeTe
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Particulars Bills Master Report - ${currentDate}</title>
+  <title>Particulars Bills Master Report - ${compName} - ${currentDate}</title>
   <style>
     @page { size: A4 landscape; margin: 8mm 10mm; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #000; margin:0; padding:10px; }
@@ -865,8 +901,8 @@ export const generateParticularsListPrintHtml = (particulars: any[], dateRangeTe
 <body>
   <div class="header">
     <div>
-      <div class="title">DHEEKSHA TRADE LINK</div>
-      <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Wholesale & Retail Trading • Sivakasi</div>
+      <div class="title">${compName}</div>
+      <div style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">${compSub}</div>
       <h2 style="font-size:15px; margin-top:4px;">PARTICULARS BILLS MASTER REPORT</h2>
       ${dateRangeText ? `<div class="date-badge">${dateRangeText}</div>` : ''}
     </div>
@@ -913,6 +949,8 @@ export const printParticularsListDirectly = (particulars: any[], dateRangeText?:
  * Print Companies List (A4 Standard)
  */
 export const generateCompaniesListPrintHtml = (companies: any[]): string => {
+  const storeSettings = getStoredSettings();
+  const compName = (storeSettings.companyName || 'DHEEKSHA TRADE LINK').toUpperCase();
   const currentDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
   const rowsHtml = companies.map((c, idx) => `
     <tr>
@@ -928,7 +966,7 @@ export const generateCompaniesListPrintHtml = (companies: any[]): string => {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Companies List - ${currentDate}</title>
+  <title>Companies List - ${compName} - ${currentDate}</title>
   <style>
     @page { size: A4 portrait; margin: 8mm 10mm; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin:0; padding:10px; }
@@ -942,7 +980,7 @@ export const generateCompaniesListPrintHtml = (companies: any[]): string => {
 <body>
   <div class="header">
     <div>
-      <div style="font-size:24px; font-weight:900; color:#0B4DB7;">DHEEKSHA TRADE LINK</div>
+      <div style="font-size:24px; font-weight:900; color:#0B4DB7;">${compName}</div>
       <h2 style="font-size:15px;">COMPANIES DIRECTORY</h2>
     </div>
     <div style="text-align:right; font-size:11.5px;">
@@ -977,6 +1015,8 @@ export const printCompaniesListDirectly = (companies: any[]) => {
  * Print Products List (A4 Standard)
  */
 export const generateProductsListPrintHtml = (products: any[]): string => {
+  const storeSettings = getStoredSettings();
+  const compName = (storeSettings.companyName || 'DHEEKSHA TRADE LINK').toUpperCase();
   const currentDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
   const rowsHtml = products.map((p, idx) => `
     <tr>
@@ -992,7 +1032,7 @@ export const generateProductsListPrintHtml = (products: any[]): string => {
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Products Catalog - ${currentDate}</title>
+  <title>Products Catalog - ${compName} - ${currentDate}</title>
   <style>
     @page { size: A4 portrait; margin: 8mm 10mm; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin:0; padding:10px; }
@@ -1006,7 +1046,7 @@ export const generateProductsListPrintHtml = (products: any[]): string => {
 <body>
   <div class="header">
     <div>
-      <div style="font-size:24px; font-weight:900; color:#0B4DB7;">DHEEKSHA TRADE LINK</div>
+      <div style="font-size:24px; font-weight:900; color:#0B4DB7;">${compName}</div>
       <h2 style="font-size:15px;">PRODUCTS PRICE CATALOG</h2>
     </div>
     <div style="text-align:right; font-size:11.5px;">
