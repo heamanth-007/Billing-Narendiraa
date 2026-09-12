@@ -1,4 +1,5 @@
 import React from 'react';
+import { getStoredSettings } from './SettingsPage';
 
 export interface BillPrintProduct {
   particular: string;
@@ -35,6 +36,8 @@ interface BillPrintTemplateProps {
 }
 
 export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) => {
+  const storeSettings = getStoredSettings();
+
   // Calculate Subtotal from Products or bill.amount
   const prodSubtotal = (bill.products || []).reduce((acc, p) => {
     const amt = parseFloat(String(p.amount).replace(/,/g, '')) || 0;
@@ -81,9 +84,9 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
   let taxAmt = 0;
   let taxLabel = 'Tax Amount';
   if (taxNum > 0) {
-    const baseForTax = Math.max(0, subtotal - discountAmt + packingAmt);
     if (rawTaxStr.includes('%') || taxNum <= 100) {
-      taxAmt = (baseForTax * taxNum) / 100;
+      const taxableBase = subtotal - discountAmt + packingAmt;
+      taxAmt = (taxableBase * taxNum) / 100;
       taxLabel = `Tax Amount (${bill.tax || taxNum}${rawTaxStr.includes('%') ? '' : '%'})`;
     } else {
       taxAmt = taxNum;
@@ -91,18 +94,22 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
     }
   }
 
-  // Grand Total calculation
-  const calculatedTotal = Math.max(0, subtotal - discountAmt + packingAmt + taxAmt);
-  const rawTotalNum = parseFloat(String(bill.total ?? bill.amount ?? '0').replace(/,/g, '')) || 0;
-  const finalTotalNum = rawTotalNum > 0 ? rawTotalNum : calculatedTotal;
-  const formattedTotal = finalTotalNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Final Net Total
+  const computedTotal = subtotal - discountAmt + packingAmt + taxAmt;
+  const formattedTotal = '₹' + computedTotal.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
-  const computedCases = bill.caseCount !== undefined && bill.caseCount !== ''
-    ? bill.caseCount
-    : (bill.products || []).reduce((acc, p) => acc + (parseFloat(String(p.quantity)) || 0), 0);
+  // Calculate sum of quantities across products for Total No. of Cases
+  const computedCases = (bill.products || []).reduce((acc, p) => {
+    const q = parseFloat(String(p.quantity).replace(/,/g, '')) || 0;
+    return acc + q;
+  }, 0);
 
-  const preparedBy = bill.preparedBy || 'S.Nagaraj';
-  const transportName = bill.transport && bill.transport.trim() !== '' && bill.transport !== '-' ? bill.transport.trim() : '-';
+  const displayCompanyName = bill.companyName || storeSettings.companyName || 'Dheeksha Trade Link';
+  const preparedBy = bill.preparedBy || storeSettings.ownerName || 'Siva';
+  const transportName = bill.transport || '-';
 
   // Check for uploaded Lorry / Godown receipt (pdfData or pdfUrl)
   const receiptSrc = bill.pdfData || bill.pdfUrl || '';
@@ -121,7 +128,7 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
         boxSizing: 'border-box',
       }}
     >
-      {/* Top Header: Centered Dheeksha Trade Link & Top Right Signatory */}
+      {/* Top Header: Centered Company Name & Logo with Top Right Signatory */}
       <div style={{ position: 'relative', textAlign: 'center', marginBottom: '18px' }}>
         <div
           style={{
@@ -135,20 +142,34 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
         >
           {preparedBy}
         </div>
+        {storeSettings.logoUrl && (
+          <div style={{ marginBottom: '6px' }}>
+            <img
+              src={storeSettings.logoUrl}
+              alt="Logo"
+              style={{ maxHeight: '55px', maxWidth: '160px', objectFit: 'contain' }}
+            />
+          </div>
+        )}
         <h1
           style={{
-            fontSize: '28px',
+            fontSize: '26px',
             fontWeight: 800,
             color: '#000000',
             margin: '0 0 2px 0',
             letterSpacing: '-0.01em',
           }}
         >
-          Dheeksha Trade Link
+          {displayCompanyName}
         </h1>
-        <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>
-          Sivakasi
+        <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#334155' }}>
+          {storeSettings.city || 'Sivakasi'} {storeSettings.state ? `, ${storeSettings.state}` : ''}
         </div>
+        {storeSettings.gstin && (
+          <div style={{ fontSize: '11.5px', fontWeight: 600, color: '#64748B', marginTop: '2px' }}>
+            GSTIN: {storeSettings.gstin} {storeSettings.phone ? `| Mobile: ${storeSettings.phone}` : ''}
+          </div>
+        )}
       </div>
 
       {/* Bill Metadata Block */}

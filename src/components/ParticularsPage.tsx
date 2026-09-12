@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, type FC } from 'react';
+import { useState, useEffect, useMemo, type FC } from 'react';
 import {
   Box,
   Typography,
@@ -16,52 +16,26 @@ import {
   Tooltip,
   CircularProgress,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Snackbar,
-  Alert,
+  Grid,
+  Divider,
+  InputBase,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
-import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
-import ModeEditOutlineRoundedIcon from '@mui/icons-material/ModeEditOutlineRounded';
-import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
-import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded';
-import UploadFileRoundedIcon from '@mui/icons-material/UploadFileRounded';
-import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
-import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
-import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import {
   CustomersApi,
   CompaniesApi,
   ProductsApi,
+  PriceListsApi,
   ParticularsApi,
-  AccountsApi,
 } from '../services/api';
 import { BillPrintModal } from './BillPrintModal';
 import type { BillPrintData } from './BillPrintTemplate';
-import { printBillDirectly, printLedgerStatementDirectly, printParticularsListDirectly } from '../utils/printUtils';
-import { DateRangePrintModal } from './DateRangePrintModal';
-
-export type ParticularSubTab =
-  | 'Select Customer'
-  | 'Create Particular'
-  | 'Account Details'
-  | 'Particular Details'
-  | 'Add Credit';
-
-const SUB_TABS: ParticularSubTab[] = [
-  'Select Customer',
-  'Create Particular',
-  'Account Details',
-  'Particular Details',
-  'Add Credit',
-];
 
 interface ProductRowItem {
   id: string;
@@ -72,3308 +46,1108 @@ interface ProductRowItem {
   amount: string;
 }
 
-interface ParticularsPageProps {
-  initialCustomerName?: string;
-  initialSubTab?: ParticularSubTab;
+interface ProductCatalogOption {
+  id: string;
+  name: string;
+  category?: string;
+  rate?: number;
+  mrp?: number;
+  unit?: string;
 }
 
-export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName, initialSubTab }) => {
-  const [activeSubTab, setActiveSubTab] = useState<ParticularSubTab>(initialSubTab || 'Select Customer');
+interface ParticularsPageProps {
+  initialCustomerName?: string;
+}
 
-  // Live Dropdown options
+export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName }) => {
+  // Dropdown options
   const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
-  const [productOptions, setProductOptions] = useState<{ id: string; name: string }[]>([]);
+  const [productOptions, setProductOptions] = useState<ProductCatalogOption[]>([]);
 
-  // Persistent Selected Customer for Creation & Filter
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [currentCustomerName, setCurrentCustomerName] = useState<string>(() => {
-    return (
-      localStorage.getItem('dheeksha_active_customer') ||
-      initialCustomerName ||
-      ''
-    );
+  // Bill Form State
+  const [customerName, setCustomerName] = useState<string>(() => {
+    return initialCustomerName || localStorage.getItem('dheeksha_active_customer') || '';
   });
-  const [filterCustomer, setFilterCustomer] = useState<string>(() => {
-    return (
-      localStorage.getItem('dheeksha_active_customer') ||
-      initialCustomerName ||
-      ''
-    );
-  });
-
-  // Subtab 2: Create Particular Form State
-  const [caseCount, setCaseCount] = useState<string>('0');
-  const [company, setCompany] = useState<string>('');
-  const [discount, setDiscount] = useState<string>('');
-  const [transport, setTransport] = useState<string>('');
-  const [packing, setPacking] = useState<string>('');
+  const [company, setCompany] = useState<string>('Dheeksha Trade');
   const [billNo, setBillNo] = useState<string>('');
-  const [tax, setTax] = useState<string>('');
-  const [date, setDate] = useState<string>(() => {
+  const [billDate, setBillDate] = useState<string>(() => {
     const today = new Date();
     return today.toLocaleDateString('en-GB').replace(/\//g, '-');
   });
+  const [discount, setDiscount] = useState<string>('0');
+  const [transport, setTransport] = useState<string>('0');
+  const [packing, setPacking] = useState<string>('0');
+  const [tax, setTax] = useState<string>('0');
 
   // Product Entry Form State
   const [selectedProduct, setSelectedProduct] = useState<string>('');
-  const [quantity, setQuantity] = useState<string>('');
-  const [rate, setRate] = useState<string>('');
-  const [pkt, setPkt] = useState<string>('');
+  const [quantity, setQuantity] = useState<string>('1');
+  const [rate, setRate] = useState<string>('0');
+  const [unit, setUnit] = useState<string>('Box');
   const [productRows, setProductRows] = useState<ProductRowItem[]>([]);
-  const [createLoading, setCreateLoading] = useState(false);
+  const [savingBill, setSavingBill] = useState<boolean>(false);
 
-  // Subtab 3: Account Details State
-  const [accountDetails, setAccountDetails] = useState<any[]>([]);
-  const [accountLoading, setAccountLoading] = useState(false);
+  // Recent Bills State
+  const [recentBills, setRecentBills] = useState<any[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState<boolean>(true);
+  const [billSearchTerm, setBillSearchTerm] = useState<string>('');
 
-  // Subtab 4: Particular Details State
-  const [particularDetails, setParticularDetails] = useState<any[]>([]);
-  const [particularLoading, setParticularLoading] = useState(false);
-
-  // Subtab 5: Add Credit Form State
-  const [addCreditCustomerName, setAddCreditCustomerName] = useState<string>('');
-  const [addCreditCompanyName, setAddCreditCompanyName] = useState<string>('');
-  const [creditAmount, setCreditAmount] = useState<string>('');
-  const [creditDate, setCreditDate] = useState<string>(() => {
-    const today = new Date();
-    return today.toLocaleDateString('en-GB').replace(/\//g, '-');
-  });
-  const [creditLoading, setCreditLoading] = useState(false);
-
-  // Bill Print Modal State
+  // Print Preview Modal State
+  const [printModalOpen, setPrintModalOpen] = useState<boolean>(false);
   const [selectedBillForPrint, setSelectedBillForPrint] = useState<BillPrintData | null>(null);
-  const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [openAccountDateModal, setOpenAccountDateModal] = useState(false);
-  const [openParticularDateModal, setOpenParticularDateModal] = useState(false);
 
-  // Edit Particular Modal State
-  const [openEditParticularModal, setOpenEditParticularModal] = useState(false);
-  const [editingParticularId, setEditingParticularId] = useState<string | null>(null);
-  const [editBillForm, setEditBillForm] = useState<{
-    billNo: string;
-    date: string;
-    customerName: string;
-    companyName: string;
-    transport: string;
-    caseCount: string;
-    discount: string;
-    packing: string;
-    tax: string;
-    products: Array<{
-      id?: string;
-      particular: string;
-      quantity: string;
-      rate: string;
-      pktUnit: string;
-      amount: string;
-    }>;
-  }>({
-    billNo: '',
-    date: '',
-    customerName: '',
-    companyName: '',
-    transport: '',
-    caseCount: '0',
-    discount: '0',
-    packing: '0',
-    tax: '0',
-    products: [],
-  });
-  const [editBillLoading, setEditBillLoading] = useState(false);
+  // Load Dropdown Options (Customers, Companies, Unified Products & Price List)
+  const loadOptions = async () => {
+    try {
+      const [custRes, compRes, prodRes, priceRes] = await Promise.all([
+        CustomersApi.getAll().catch(() => []),
+        CompaniesApi.getAll().catch(() => []),
+        ProductsApi.getAll().catch(() => []),
+        PriceListsApi.getAll().catch(() => []),
+      ]);
 
-  // PDF Upload & Preview State (under 1 MB)
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadTargetBillId, setUploadTargetBillId] = useState<string | null>(null);
-  const [uploadingBillId, setUploadingBillId] = useState<string | null>(null);
-  const [pdfPreviewModal, setPdfPreviewModal] = useState<{
-    open: boolean;
-    url: string;
-    name: string;
-    id: string;
-    billNo?: string;
-  } | null>(null);
-  const [pdfToast, setPdfToast] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info';
-  }>({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
+      if (Array.isArray(custRes) && custRes.length > 0) {
+        const mapped = custRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
+        setCustomerOptions(mapped);
+        if (!customerName && mapped.length > 0) {
+          setCustomerName(mapped[0].name);
+        }
+      }
 
-  // Automatically calculate total case count from added product rows
-  useEffect(() => {
-    if (productRows.length > 0) {
-      const totalCases = productRows.reduce((acc, row) => acc + (parseFloat(row.quantity) || 0), 0);
-      setCaseCount(String(totalCases));
-    } else {
-      setCaseCount('0');
+      if (Array.isArray(compRes) && compRes.length > 0) {
+        const mapped = compRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
+        setCompanyOptions(mapped);
+        if (mapped.length > 0 && !company) {
+          setCompany(mapped[0].name);
+        }
+      }
+
+      // Merge Products & Price List
+      const prodMap = new Map<string, ProductCatalogOption>();
+
+      if (Array.isArray(prodRes)) {
+        prodRes.forEach((p: any) => {
+          const key = (p.name || '').trim();
+          if (key) {
+            prodMap.set(key.toLowerCase(), {
+              id: p._id || p.id,
+              name: key,
+              category: p.category || 'General',
+              rate: p.rate || 0,
+              mrp: p.mrp || 0,
+              unit: p.unit || 'Box',
+            });
+          }
+        });
+      }
+
+      if (Array.isArray(priceRes)) {
+        priceRes.forEach((item: any) => {
+          const key = (item.itemName || '').trim();
+          if (key) {
+            const existing = prodMap.get(key.toLowerCase());
+            prodMap.set(key.toLowerCase(), {
+              id: item._id || item.id || existing?.id || key,
+              name: key,
+              category: item.category || existing?.category || 'General',
+              rate: item.rate !== undefined && item.rate > 0 ? item.rate : (existing?.rate || 0),
+              mrp: item.mrp !== undefined && item.mrp > 0 ? item.mrp : (existing?.mrp || 0),
+              unit: item.unit || existing?.unit || 'Box',
+            });
+          }
+        });
+      }
+
+      const mergedList = Array.from(prodMap.values());
+      setProductOptions(mergedList);
+      if (mergedList.length > 0 && !selectedProduct) {
+        setSelectedProduct(mergedList[0].name);
+        setRate(String(mergedList[0].rate || 0));
+        setUnit(mergedList[0].unit || 'Box');
+      }
+    } catch (err) {
+      console.error('Failed to load billing options:', err);
     }
-  }, [productRows]);
+  };
 
-  // Update customer when prop changes
+  // Fetch Next Bill Number
+  const fetchNextBillNo = async () => {
+    try {
+      const res = await ParticularsApi.getNextBillNo();
+      if (res?.nextBillNo) {
+        setBillNo(res.nextBillNo);
+      } else {
+        setBillNo(`INV-${Date.now().toString().slice(-4)}`);
+      }
+    } catch {
+      setBillNo(`INV-${Date.now().toString().slice(-4)}`);
+    }
+  };
+
+  // Fetch Recent Bills
+  const fetchRecentBills = async () => {
+    try {
+      setLoadingRecent(true);
+      const bills = await ParticularsApi.getAll();
+      setRecentBills(Array.isArray(bills) ? bills : []);
+    } catch (err) {
+      console.error('Failed to fetch recent bills:', err);
+    } finally {
+      setLoadingRecent(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOptions();
+    fetchNextBillNo();
+    fetchRecentBills();
+  }, []);
+
+  // Update customer name if prop changes
   useEffect(() => {
     if (initialCustomerName) {
-      setCurrentCustomerName(initialCustomerName);
-      setFilterCustomer(initialCustomerName);
-      setAddCreditCustomerName(initialCustomerName);
-      localStorage.setItem('dheeksha_active_customer', initialCustomerName);
+      setCustomerName(initialCustomerName);
     }
   }, [initialCustomerName]);
 
-  // Update subtab when prop changes
-  useEffect(() => {
-    if (initialSubTab) {
-      setActiveSubTab(initialSubTab);
-    }
-  }, [initialSubTab]);
-
-  // Load Dropdown Options
-  useEffect(() => {
-    const loadOptions = async () => {
-      try {
-        const [custRes, compRes, prodRes] = await Promise.all([
-          CustomersApi.getAll(),
-          CompaniesApi.getAll(),
-          ProductsApi.getAll(),
-        ]);
-
-        if (custRes && custRes.length > 0) {
-          const mapped = custRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
-          setCustomerOptions(mapped);
-
-          const existing = mapped.find((c: any) => c.name === currentCustomerName);
-          if (existing) {
-            setSelectedCustomerId(existing.id);
-            setAddCreditCustomerName(existing.name);
-            setFilterCustomer(existing.name);
-          } else {
-            setSelectedCustomerId(mapped[0].id);
-            setCurrentCustomerName(mapped[0].name);
-            setAddCreditCustomerName(mapped[0].name);
-            setFilterCustomer(mapped[0].name);
-            localStorage.setItem('dheeksha_active_customer', mapped[0].name);
-          }
-        }
-
-        if (compRes && compRes.length > 0) {
-          const mapped = compRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
-          setCompanyOptions(mapped);
-          if (!company) setCompany(mapped[0].name);
-          if (!addCreditCompanyName) setAddCreditCompanyName(mapped[0].name);
-        }
-
-        if (prodRes && prodRes.length > 0) {
-          const mapped = prodRes.map((p: any) => ({ id: p._id || p.id, name: p.name }));
-          setProductOptions(mapped);
-          if (!selectedProduct) setSelectedProduct(mapped[0].name);
-        }
-      } catch (err) {
-        console.error('Error loading dropdown options:', err);
-      }
-    };
-    loadOptions();
-  }, []);
-
-  // Fetch Accounts
-  const fetchAccounts = async (targetCustomer?: string) => {
-    try {
-      setAccountLoading(true);
-      const cust = targetCustomer !== undefined ? targetCustomer : (filterCustomer || currentCustomerName);
-      const data = await AccountsApi.getAll(cust && cust !== 'ALL' ? cust : undefined);
-      setAccountDetails(data || []);
-    } catch (err) {
-      console.error('Failed to load accounts:', err);
-    } finally {
-      setAccountLoading(false);
-    }
-  };
-
-  // Fetch Particulars (Loads all bills across all customers, sorted with latest first)
-  const fetchParticulars = async () => {
-    try {
-      setParticularLoading(true);
-      const data = await ParticularsApi.getAll();
-      setParticularDetails(data || []);
-    } catch (err) {
-      console.error('Failed to load particulars:', err);
-    } finally {
-      setParticularLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const custToFetch = filterCustomer || currentCustomerName;
-    if (activeSubTab === 'Account Details') {
-      fetchAccounts(custToFetch);
-    } else if (activeSubTab === 'Particular Details') {
-      fetchParticulars();
-    }
-  }, [activeSubTab, filterCustomer, currentCustomerName]);
-
-  // Overall totals
-  const overallTotals = useMemo(() => {
-    let totalDebit = 0;
-    let totalCredit = 0;
-    accountDetails.forEach((row) => {
-      totalDebit += parseFloat(String(row.debit || '0').replace(/,/g, '')) || 0;
-      totalCredit += parseFloat(String(row.credit || '0').replace(/,/g, '')) || 0;
-    });
-    return {
-      totalDebit,
-      totalCredit,
-      netBalance: totalCredit - totalDebit,
-    };
-  }, [accountDetails]);
-
-  const handleSelectCustomerClick = () => {
-    setActiveSubTab('Create Particular');
-  };
-
-  // Subtab 2: Product Line Addition
-  const handleAddProductRow = () => {
-    if (!selectedProduct || !quantity || !rate) {
-      alert('Please select Product, enter Case and Rate');
+  // Add Product Item to Bill Row
+  const handleAddProductItem = () => {
+    if (!selectedProduct.trim()) {
+      alert('Please select or enter a product name');
       return;
     }
-    const caseVal = parseFloat(quantity) || 0;
-    const piecesPerCase = parseFloat(pkt) || 1;
-    const totalPieces = caseVal * piecesPerCase;
-    const lineAmt = (totalPieces * (parseFloat(rate) || 0)).toFixed(2);
+    const qNum = parseFloat(quantity) || 1;
+    const rNum = parseFloat(rate) || 0;
+    const amt = (qNum * rNum).toFixed(2);
 
     const newRow: ProductRowItem = {
-      id: Date.now().toString(),
-      particular: selectedProduct,
-      quantity,
-      rate,
-      pktUnit: pkt ? pkt : '-',
-      amount: lineAmt,
+      id: `row-${Date.now()}-${Math.random()}`,
+      particular: selectedProduct.trim(),
+      quantity: String(qNum),
+      rate: String(rNum),
+      pktUnit: unit || 'Box',
+      amount: amt,
     };
+
     setProductRows((prev) => [...prev, newRow]);
-    setQuantity('');
-    setRate('');
-    setPkt('');
+    setQuantity('1');
   };
 
-  // Subtotal (Sum of all products)
-  const subtotalAmount = useMemo(() => {
+  // Delete product row from current bill
+  const handleDeleteRow = (id: string) => {
+    setProductRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  // Bill Financial Totals Calculation
+  const subtotal = useMemo(() => {
     return productRows.reduce((acc, row) => acc + (parseFloat(row.amount) || 0), 0);
   }, [productRows]);
 
-  // Discount Calculation (Supports % like 5% or flat rupees like 500)
-  const discountVal = useMemo(() => {
-    if (!discount) return 0;
-    const cleanDisc = String(discount).trim();
-    const num = parseFloat(cleanDisc) || 0;
-    if (num <= 0) return 0;
-    if (cleanDisc.endsWith('%') || num <= 100) {
-      return (subtotalAmount * num) / 100;
+  const discountAmount = useMemo(() => {
+    const rawDisc = parseFloat(discount) || 0;
+    if (rawDisc <= 0) return 0;
+    if (rawDisc <= 100) {
+      return (subtotal * rawDisc) / 100;
     }
-    return num;
-  }, [discount, subtotalAmount]);
+    return rawDisc;
+  }, [subtotal, discount]);
 
-  // Packing Calculation (Supports % like 2% or flat rupees)
-  const packingVal = useMemo(() => {
-    if (!packing) return 0;
-    const cleanPack = String(packing).trim();
-    const num = parseFloat(cleanPack) || 0;
-    if (num <= 0) return 0;
-    if (cleanPack.endsWith('%') || (num <= 100 && !cleanPack.includes('.'))) {
-      return (subtotalAmount * num) / 100;
-    }
-    return num;
-  }, [packing, subtotalAmount]);
+  const totalCases = useMemo(() => {
+    return productRows.reduce((acc, row) => acc + (parseFloat(row.quantity) || 0), 0);
+  }, [productRows]);
 
-  // Tax Calculation (Supports % like 5%, 18% or flat rupees)
-  const taxVal = useMemo(() => {
-    if (!tax) return 0;
-    const cleanTax = String(tax).trim();
-    const num = parseFloat(cleanTax) || 0;
-    if (num <= 0) return 0;
-    const baseForTax = Math.max(0, subtotalAmount - discountVal + packingVal);
-    if (cleanTax.endsWith('%') || num <= 100) {
-      return (baseForTax * num) / 100;
-    }
-    return num;
-  }, [tax, subtotalAmount, discountVal, packingVal]);
+  const grandTotal = useMemo(() => {
+    const transportAmt = parseFloat(transport) || 0;
+    const packingAmt = parseFloat(packing) || 0;
+    const taxPercent = parseFloat(tax) || 0;
 
-  // Final Net Total Amount
-  const finalTotalAmount = useMemo(() => {
-    const net = Math.max(0, subtotalAmount - discountVal + packingVal + taxVal);
-    return net.toFixed(2);
-  }, [subtotalAmount, discountVal, packingVal, taxVal]);
+    const afterDiscount = Math.max(0, subtotal - discountAmount);
+    const withAdditions = afterDiscount + transportAmt + packingAmt;
+    const taxAmt = taxPercent > 0 ? (withAdditions * taxPercent) / 100 : 0;
+    return withAdditions + taxAmt;
+  }, [subtotal, discountAmount, transport, packing, tax]);
 
-  // Subtab 2: Submit Particular Bill
-  const handleCreateParticular = async () => {
-    if (!billNo || !billNo.trim()) {
-      alert('Please enter a Bill Number');
-      return;
-    }
-    if (!currentCustomerName) {
-      alert('Please select a Customer');
+  // Save Bill to DB
+  const handleSaveBill = async (andPrint: boolean = false) => {
+    if (!customerName.trim()) {
+      alert('Please select or enter Customer Name');
       return;
     }
     if (productRows.length === 0) {
-      alert('Please add at least one Product Item');
+      alert('Please add at least one product item to the bill');
       return;
     }
 
     try {
-      setCreateLoading(true);
-      const created = await ParticularsApi.create({
-        customerName: currentCustomerName || 'General',
-        caseCount: caseCount || '0',
-        companyName: company || (companyOptions[0]?.name ?? 'General'),
+      setSavingBill(true);
+      const payload = {
+        billNo: billNo.trim() || `INV-${Date.now().toString().slice(-4)}`,
+        date: billDate,
+        customerName: customerName.trim(),
+        companyName: company || 'Dheeksha Trade',
+        transport: transport || '0',
+        caseCount: String(totalCases),
         discount: discount || '0',
-        transport: transport || '-',
         packing: packing || '0',
-        billNo: billNo.trim(),
         tax: tax || '0',
-        amount: subtotalAmount.toFixed(2),
-        total: finalTotalAmount,
-        date: date,
-        products: productRows,
-      });
-
-      const assignedBillNo = created?.billNo || billNo.trim();
-      const createdBillData: BillPrintData = {
-        billNo: assignedBillNo,
-        customerName: currentCustomerName || 'General',
-        companyName: company || (companyOptions[0]?.name ?? 'General'),
-        preparedBy: 'S.Nagaraj',
-        phone: '+91 98765 43210',
-        email: 'info@dheekshatrade.com',
-        website: 'www.dheekshatrade.com',
-        transport: transport && transport.trim() !== '' && transport !== '-' ? transport.trim() : '-',
-        caseCount: caseCount || '0',
-        date: date,
-        products: productRows.map((p) => ({
-          particular: p.particular,
-          quantity: p.quantity,
-          rate: p.rate,
-          pktUnit: p.pktUnit,
-          amount: p.amount,
+        amount: String(subtotal.toFixed(2)),
+        total: String(grandTotal.toFixed(2)),
+        products: productRows.map((r) => ({
+          particular: r.particular,
+          quantity: r.quantity,
+          rate: r.rate,
+          pktUnit: r.pktUnit,
+          amount: r.amount,
         })),
-        amount: subtotalAmount.toFixed(2),
-        discount: discount || '0',
-        packing: packing || '0',
-        tax: tax || '0',
-        total: finalTotalAmount,
       };
 
-      alert(`Particular bill #${assignedBillNo} for ${company || 'General'} created successfully!`);
-      setBillNo('');
+      await ParticularsApi.create(payload);
+      localStorage.setItem('dheeksha_active_customer', customerName.trim());
+
+      if (andPrint) {
+        const printData: BillPrintData = {
+          billNo: payload.billNo,
+          date: payload.date,
+          customerName: payload.customerName,
+          companyName: payload.companyName,
+          transport: payload.transport,
+          caseCount: payload.caseCount,
+          discount: payload.discount,
+          packing: payload.packing,
+          tax: payload.tax,
+          amount: payload.amount,
+          total: payload.total,
+          products: payload.products,
+        };
+        setSelectedBillForPrint(printData);
+        setPrintModalOpen(true);
+      }
+
+      // Reset Bill Form & Reload Recent Bills
       setProductRows([]);
-      setCaseCount('0');
-      setDiscount('');
-      setTransport('');
-      setPacking('');
-      setTax('');
-      fetchAccounts(filterCustomer);
-      fetchParticulars();
-      setActiveSubTab('Particular Details');
+      setDiscount('0');
+      setTransport('0');
+      setPacking('0');
+      setTax('0');
+      fetchNextBillNo();
+      fetchRecentBills();
 
-      // Open the print invoice modal automatically
-      setSelectedBillForPrint(createdBillData);
-      setPrintModalOpen(true);
-    } catch (err) {
-      console.error('Failed to create particular:', err);
-      alert('Error creating particular bill');
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
-  // Subtab 5: Submit Credit
-  const handleAddCreditSubmit = async () => {
-    if (!creditAmount || parseFloat(creditAmount) <= 0) {
-      alert('Please enter a valid credit amount');
-      return;
-    }
-
-    try {
-      setCreditLoading(true);
-      await AccountsApi.addCredit({
-        customerName: addCreditCustomerName || currentCustomerName || (customerOptions[0]?.name ?? 'General'),
-        companyName: addCreditCompanyName || (companyOptions[0]?.name ?? 'General'),
-        creditAmount: creditAmount.trim(),
-        date: creditDate,
-      });
-
-      alert('Credit added successfully!');
-      setCreditAmount('');
-      fetchAccounts(filterCustomer);
-      fetchParticulars();
-      setActiveSubTab('Account Details');
-    } catch (err) {
-      console.error('Failed to add credit:', err);
-      alert('Error adding credit');
-    } finally {
-      setCreditLoading(false);
-    }
-  };
-
-  // Delete handlers
-  const handleDeleteAccountEntry = async (id: string) => {
-    if (!window.confirm('Delete this account ledger transaction?')) return;
-    try {
-      const entryToDelete = accountDetails.find((a) => (a._id || a.id) === id);
-      await AccountsApi.delete(id);
-      setAccountDetails((prev) => prev.filter((a) => (a._id || a.id) !== id));
-      if (entryToDelete) {
-        setParticularDetails((prev) =>
-          prev.filter((p) => {
-            const pId = p._id || p.id;
-            if (entryToDelete.particularId && (pId === entryToDelete.particularId || p._id === entryToDelete.particularId)) return false;
-            if (entryToDelete.billNo && p.billNo === entryToDelete.billNo) return false;
-            return true;
-          })
-        );
+      if (!andPrint) {
+        alert(`Bill #${payload.billNo} saved successfully!`);
       }
-      fetchAccounts(filterCustomer);
-      fetchParticulars();
-    } catch (err) {
-      console.error('Failed to delete account entry:', err);
+    } catch (err: any) {
+      console.error('Failed to save bill:', err);
+      alert(err.message || 'Error saving bill');
+    } finally {
+      setSavingBill(false);
     }
   };
 
-  const handleDeleteParticular = async (id: string) => {
-    if (!window.confirm('Delete this particular bill?')) return;
+  // Delete Recent Bill
+  const handleDeleteRecentBill = async (bill: any) => {
+    const id = bill._id || bill.id;
+    if (!id) return;
+    if (!window.confirm(`Delete Bill #${bill.billNo || ''} for ${bill.customerName}?`)) return;
+
     try {
-      const billToDelete = particularDetails.find((p) => (p._id || p.id) === id);
       await ParticularsApi.delete(id);
-      setParticularDetails((prev) => prev.filter((p) => (p._id || p.id) !== id));
-      setAccountDetails((prev) =>
-        prev.filter((a) => {
-          if (a.particularId && (a.particularId === id || (billToDelete && a.particularId === (billToDelete._id || billToDelete.id)))) {
-            return false;
-          }
-          if (billToDelete?.billNo && a.billNo && a.billNo === billToDelete.billNo) {
-            return false;
-          }
-          return true;
-        })
-      );
-      fetchAccounts(filterCustomer);
-      fetchParticulars();
-    } catch (err) {
-      console.error('Failed to delete particular bill:', err);
+      setRecentBills((prev) => prev.filter((b) => (b._id || b.id) !== id));
+    } catch (err: any) {
+      console.error('Failed to delete bill:', err);
+      alert(err.message || 'Error deleting bill');
     }
   };
 
-  const handleOpenBillPrint = (billData: any, autoTrigger = false) => {
-    const formattedBill: BillPrintData = {
-      billNo: billData.billNo || '',
-      date: billData.date || '',
-      customerName: billData.customerName || currentCustomerName || '',
-      companyName: billData.companyName || company || '',
-      preparedBy: billData.preparedBy || 'S.Nagaraj',
-      phone: '+91 98765 43210',
-      email: 'info@dheekshatrade.com',
-      website: 'www.dheekshatrade.com',
-      transport: billData.transport && billData.transport.trim() !== '' && billData.transport !== '-' ? billData.transport.trim() : '-',
-      caseCount: billData.caseCount || billData.cases || (billData.products ? billData.products.reduce((acc: number, p: any) => acc + (parseFloat(p.quantity) || 0), 0) : 0),
-      products: (billData.products || []).map((p: any) => ({
-        particular: p.particular || p.particularName || p.name || '',
-        quantity: p.quantity || '',
-        rate: p.rate || '',
-        pktUnit: p.pktUnit || p.pkt || '',
-        amount: p.amount || '',
+  // Open Print for Recent Bill
+  const handlePrintRecentBill = (bill: any) => {
+    const printData: BillPrintData = {
+      billNo: bill.billNo || '',
+      date: bill.date || '',
+      customerName: bill.customerName || '',
+      companyName: bill.companyName || 'Dheeksha Trade',
+      transport: String(bill.transport || '0'),
+      caseCount: String(bill.caseCount || '0'),
+      discount: String(bill.discount || '0'),
+      packing: String(bill.packing || '0'),
+      tax: String(bill.tax || '0'),
+      amount: String(bill.amount || bill.total || '0'),
+      total: String(bill.total || '0'),
+      products: (bill.products || []).map((p: any) => ({
+        particular: p.particular || p.name || '',
+        quantity: p.quantity || '0',
+        rate: p.rate || '0',
+        pktUnit: p.pktUnit || 'Box',
+        amount: p.amount || '0',
       })),
-      amount: billData.amount || billData.total || '0.00',
-      discount: billData.discount !== undefined && billData.discount !== null ? String(billData.discount) : '0',
-      packing: billData.packing !== undefined && billData.packing !== null ? String(billData.packing) : '0',
-      tax: billData.tax !== undefined && billData.tax !== null ? String(billData.tax) : '0',
-      total: billData.total || billData.amount || '0.00',
-      pdfData: billData.pdfData || '',
-      pdfUrl: billData.pdfUrl || '',
-      pdfName: billData.pdfName || '',
     };
-
-    setSelectedBillForPrint(formattedBill);
-
-    if (autoTrigger) {
-      printBillDirectly(formattedBill);
-    } else {
-      setPrintModalOpen(true);
-    }
+    setSelectedBillForPrint(printData);
+    setPrintModalOpen(true);
   };
 
-  // Edit Particular Handlers
-  const handleOpenEditParticular = (row: any) => {
-    const rowId = row._id || row.id || '';
-    setEditingParticularId(rowId);
-    setEditBillForm({
-      billNo: row.billNo || '',
-      date: row.date || '',
-      customerName: row.customerName || '',
-      companyName: row.companyName || '',
-      transport: row.transport && row.transport !== '-' ? row.transport : '',
-      caseCount: String(row.caseCount || '0'),
-      discount: String(row.discount || '0'),
-      packing: String(row.packing || '0'),
-      tax: String(row.tax || '0'),
-      products: (row.products || []).map((p: any, idx: number) => ({
-        id: p._id || p.id || `edit-prod-${idx}`,
-        particular: p.particular || p.particularName || p.name || '',
-        quantity: String(p.quantity || '0'),
-        rate: String(p.rate || '0'),
-        pktUnit: p.pktUnit || p.pkt || '-',
-        amount: String(p.amount || '0'),
-      })),
-    });
-    setOpenEditParticularModal(true);
-  };
-
-  const handleAddEditProductRow = () => {
-    setEditBillForm((prev) => {
-      const updated = [
-        ...prev.products,
-        {
-          id: `edit-prod-${Date.now()}`,
-          particular: productOptions[0]?.name || '',
-          quantity: '1',
-          rate: '0',
-          pktUnit: '-',
-          amount: '0.00',
-        },
-      ];
-      const totalCases = updated.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0);
-      return { ...prev, products: updated, caseCount: String(totalCases) };
-    });
-  };
-
-  const handleUpdateEditProductRow = (index: number, field: string, val: string) => {
-    setEditBillForm((prev) => {
-      const updated = [...prev.products];
-      const row = { ...updated[index], [field]: val };
-      if (field === 'quantity' || field === 'rate' || field === 'pktUnit') {
-        const q = parseFloat(field === 'quantity' ? val : row.quantity) || 0;
-        const r = parseFloat(field === 'rate' ? val : row.rate) || 0;
-        const pktStr = (field === 'pktUnit' ? val : row.pktUnit) || '';
-        const pNum = parseFloat(pktStr);
-        const pieces = !isNaN(pNum) && pNum > 0 ? pNum : 1;
-        row.amount = (q * pieces * r).toFixed(2);
-      }
-      updated[index] = row;
-      const totalCases = updated.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0);
-      return { ...prev, products: updated, caseCount: String(totalCases) };
-    });
-  };
-
-  const handleDeleteEditProductRow = (index: number) => {
-    setEditBillForm((prev) => {
-      const updated = prev.products.filter((_, i) => i !== index);
-      const totalCases = updated.reduce((sum, p) => sum + (parseFloat(p.quantity) || 0), 0);
-      return { ...prev, products: updated, caseCount: String(totalCases) };
-    });
-  };
-
-  // Edit Calculation Hooks
-  const editSubtotal = useMemo(() => {
-    return editBillForm.products.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
-  }, [editBillForm.products]);
-
-  const editDiscountVal = useMemo(() => {
-    const dStr = String(editBillForm.discount || '').trim();
-    if (!dStr) return 0;
-    const cleanDisc = dStr.replace(/[^0-9.]/g, '');
-    const dNum = parseFloat(cleanDisc) || 0;
-    if (dNum <= 0) return 0;
-    return dStr.includes('%') || dNum <= 100 ? (editSubtotal * dNum) / 100 : dNum;
-  }, [editSubtotal, editBillForm.discount]);
-
-  const editPackingVal = useMemo(() => {
-    const pStr = String(editBillForm.packing || '').trim();
-    if (!pStr) return 0;
-    const cleanPack = pStr.replace(/[^0-9.]/g, '');
-    const pNum = parseFloat(cleanPack) || 0;
-    if (pNum <= 0) return 0;
-    return pStr.includes('%') || pNum <= 100 ? (editSubtotal * pNum) / 100 : pNum;
-  }, [editSubtotal, editBillForm.packing]);
-
-  const editTaxVal = useMemo(() => {
-    const tStr = String(editBillForm.tax || '').trim();
-    if (!tStr) return 0;
-    const cleanTax = tStr.replace(/[^0-9.]/g, '');
-    const tNum = parseFloat(cleanTax) || 0;
-    if (tNum <= 0) return 0;
-    const base = Math.max(0, editSubtotal - editDiscountVal + editPackingVal);
-    return tStr.includes('%') || tNum <= 100 ? (base * tNum) / 100 : tNum;
-  }, [editSubtotal, editDiscountVal, editPackingVal, editBillForm.tax]);
-
-  const editFinalTotal = useMemo(() => {
-    const net = Math.max(0, editSubtotal - editDiscountVal + editPackingVal + editTaxVal);
-    return net.toFixed(2);
-  }, [editSubtotal, editDiscountVal, editPackingVal, editTaxVal]);
-
-  const handleSaveEditParticular = async () => {
-    if (!editingParticularId) return;
-    try {
-      setEditBillLoading(true);
-      await ParticularsApi.update(editingParticularId, {
-        customerName: editBillForm.customerName,
-        companyName: editBillForm.companyName,
-        date: editBillForm.date,
-        transport: editBillForm.transport || '-',
-        caseCount: editBillForm.caseCount || '0',
-        discount: editBillForm.discount || '0',
-        packing: editBillForm.packing || '0',
-        tax: editBillForm.tax || '0',
-        billNo: editBillForm.billNo,
-        amount: editSubtotal.toFixed(2),
-        total: editFinalTotal,
-        products: editBillForm.products,
-      });
-
-      await fetchParticulars();
-      await fetchAccounts(filterCustomer);
-      setOpenEditParticularModal(false);
-      setPdfToast({
-        open: true,
-        message: `Bill #${editBillForm.billNo} updated successfully!`,
-        severity: 'success',
-      });
-    } catch (err) {
-      console.error('Failed to update particular bill:', err);
-      alert('Error updating bill details');
-    } finally {
-      setEditBillLoading(false);
-    }
-  };
-
-  // Transport Receipt / PDF Upload Handlers (Up to 5 MB)
-  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-
-  const handleTriggerPdfUpload = (id: string) => {
-    setUploadTargetBillId(id);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
-  const handlePdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    const targetId = uploadTargetBillId;
-    if (!file || !targetId) return;
-
-    // Reset input so same file can be selected again if needed
-    e.target.value = '';
-
-    // 1. Verify file type is Image or PDF
-    const isImageOrPdf =
-      file.type.startsWith('image/') ||
-      file.type === 'application/pdf' ||
-      /\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(file.name);
-    if (!isImageOrPdf) {
-      setPdfToast({
-        open: true,
-        message: 'Invalid file format. Please upload an Image (JPG, PNG, WEBP) or PDF file.',
-        severity: 'error',
-      });
-      return;
-    }
-
-    // 2. Verify file size is under 5 MB
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
-      setPdfToast({
-        open: true,
-        message: `File size (${sizeInMb} MB) exceeds 5 MB limit. Please select a smaller file.`,
-        severity: 'error',
-      });
-      return;
-    }
-
-    try {
-      setUploadingBillId(targetId);
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const base64Data = reader.result as string;
-          const uploadRes = await ParticularsApi.uploadPdf(targetId, base64Data, file.name);
-          const savedData = uploadRes?.data?.pdfData || base64Data;
-
-          // Update local state in particularDetails
-          setParticularDetails((prev) =>
-            prev.map((p) => {
-              const pId = p._id || p.id;
-              if (pId === targetId) {
-                return { ...p, pdfData: savedData, pdfName: file.name };
-              }
-              return p;
-            })
-          );
-
-          setPdfToast({
-            open: true,
-            message: `Receipt document "${file.name}" uploaded successfully!`,
-            severity: 'success',
-          });
-        } catch (uploadErr) {
-          console.error('Failed to save document to server:', uploadErr);
-          setPdfToast({
-            open: true,
-            message: 'Failed to upload receipt. Please try again.',
-            severity: 'error',
-          });
-        } finally {
-          setUploadingBillId(null);
-        }
-      };
-
-      reader.onerror = () => {
-        setUploadingBillId(null);
-        setPdfToast({
-          open: true,
-          message: 'Error reading file.',
-          severity: 'error',
-        });
-      };
-
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error('Failed to initiate upload:', err);
-      setUploadingBillId(null);
-    }
-  };
-
-  const handleOpenPdfPreview = (row: any) => {
-    const rowId = row._id || row.id || '';
-    if (!row.pdfData) {
-      handleTriggerPdfUpload(rowId);
-      return;
-    }
-
-    setPdfPreviewModal({
-      open: true,
-      url: row.pdfData,
-      name: row.pdfName || `Bill-${row.billNo || 'document'}.pdf`,
-      id: rowId,
-      billNo: row.billNo,
-    });
-  };
-
-  const handleDeleteAttachedPdf = async (id: string) => {
-    if (!window.confirm('Are you sure you want to remove the attached PDF from this bill?')) return;
-    try {
-      await ParticularsApi.deletePdf(id);
-      setParticularDetails((prev) =>
-        prev.map((p) => {
-          const pId = p._id || p.id;
-          if (pId === id) {
-            return { ...p, pdfData: '', pdfName: '' };
-          }
-          return p;
-        })
-      );
-      if (pdfPreviewModal?.id === id) {
-        setPdfPreviewModal(null);
-      }
-      setPdfToast({
-        open: true,
-        message: 'Attached PDF deleted successfully.',
-        severity: 'success',
-      });
-    } catch (err) {
-      console.error('Failed to delete attached PDF:', err);
-      setPdfToast({
-        open: true,
-        message: 'Failed to delete attached PDF.',
-        severity: 'error',
-      });
-    }
-  };
+  // Filtered recent bills
+  const filteredRecentBills = useMemo(() => {
+    if (!billSearchTerm.trim()) return recentBills;
+    const term = billSearchTerm.toLowerCase().trim();
+    return recentBills.filter(
+      (b) =>
+        (b.billNo && b.billNo.toLowerCase().includes(term)) ||
+        (b.customerName && b.customerName.toLowerCase().includes(term)) ||
+        (b.companyName && b.companyName.toLowerCase().includes(term)) ||
+        (b.date && b.date.toLowerCase().includes(term))
+    );
+  }, [recentBills, billSearchTerm]);
 
   return (
     <Box
       sx={{
         width: '100%',
-        p: { xs: 2, sm: 2.5, md: 3 },
+        px: { xs: 2, sm: 3, md: 4 },
+        py: { xs: 2, md: 3 },
         boxSizing: 'border-box',
       }}
     >
-      {/* Subtabs Bar */}
+      {/* Top Banner Header */}
       <Box
         sx={{
+          mb: 3,
           display: 'flex',
-          alignItems: 'center',
-          gap: { xs: 2, sm: 3, md: 4 },
-          mb: 2.5,
-          flexWrap: 'wrap',
-          borderBottom: '1px solid #EEF2F6',
-          pb: 0.5,
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          justifyContent: 'space-between',
+          gap: 1.5,
         }}
       >
-        {SUB_TABS.map((tab) => {
-          const isActive = activeSubTab === tab;
-          return (
-            <Box
-              key={tab}
-              onClick={() => setActiveSubTab(tab)}
-              sx={{
-                position: 'relative',
-                pb: 1.2,
-                cursor: 'pointer',
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: '14px',
-                  fontWeight: isActive ? 700 : 600,
-                  color: isActive ? '#0B4DB7' : '#475569',
-                  backgroundColor: isActive && tab === 'Add Credit' ? '#EFF6FF' : 'transparent',
-                  px: isActive && tab === 'Add Credit' ? 1.5 : 0.5,
-                  py: isActive && tab === 'Add Credit' ? 0.6 : 0,
-                  borderRadius: '6px',
-                  transition: 'all 0.15s ease',
-                  '&:hover': {
-                    color: '#0B4DB7',
-                  },
-                }}
-              >
-                {tab}
-              </Typography>
+        <Box>
+          <Typography sx={{ fontSize: '24px', fontWeight: 800, color: '#B91C1C', letterSpacing: '-0.02em' }}>
+            New Invoice & Billing
+          </Typography>
+          <Typography sx={{ fontSize: '13px', color: '#786C58', fontWeight: 500 }}>
+            Create and print customer bills instantly with auto-populated price list rates.
+          </Typography>
+        </Box>
 
-              {/* Active Tab Underline Bar */}
-              {isActive && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '2.5px',
-                    backgroundColor: '#0B4DB7',
-                    borderTopLeftRadius: '2px',
-                    borderTopRightRadius: '2px',
-                  }}
-                />
-              )}
-            </Box>
-          );
-        })}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Chip
+            icon={<ReceiptLongRoundedIcon sx={{ color: '#92400E !important' }} />}
+            label={`Total Bills: ${recentBills.length}`}
+            sx={{ backgroundColor: '#FFFBEB', color: '#92400E', fontWeight: 700, border: '1px solid #FDE68A' }}
+          />
+        </Box>
       </Box>
 
-      {/* View 1: Select Customer View */}
-      {activeSubTab === 'Select Customer' && (
-        <Paper
-          elevation={0}
-          sx={{
-            width: '100%',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '8px',
-            border: '1px solid #E2E8F0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            overflow: 'hidden',
-          }}
-        >
-          <Box
-            sx={{
-              backgroundColor: '#0B4DB7',
-              px: { xs: 2, sm: 3 },
-              py: 1.6,
-              minHeight: '52px',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <Typography
-              sx={{
-                color: '#FFFFFF',
-                fontSize: '16px',
-                fontWeight: 700,
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Select Customer
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              p: { xs: 3, sm: 4, md: 5 },
-              pt: { xs: 4, md: 5 },
-              pb: { xs: 5, md: 6 },
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                alignItems: { xs: 'flex-start', sm: 'center' },
-                gap: { xs: 1.5, sm: 4 },
-                maxWidth: '800px',
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: '#0F172A',
-                  minWidth: '140px',
-                }}
-              >
-                Select Customer
-              </Typography>
-
-              <Box sx={{ width: { xs: '100%', sm: '380px', md: '420px' } }}>
-                <Autocomplete
-                  fullWidth
-                  size="small"
-                  autoHighlight
-                  options={customerOptions}
-                  getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-                  isOptionEqualToValue={(option, val) => option.id === val.id || option.name === val.name}
-                  value={customerOptions.find((c) => c.id === selectedCustomerId) || null}
-                  onChange={(_, val) => {
-                    if (val) {
-                      setSelectedCustomerId(val.id);
-                      setCurrentCustomerName(val.name);
-                      setFilterCustomer(val.name);
-                      setAddCreditCustomerName(val.name);
-                      localStorage.setItem('dheeksha_active_customer', val.name);
-                    } else {
-                      setSelectedCustomerId('');
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Type or select customer..."
-                      sx={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '6px',
-                        '& .MuiOutlinedInput-root': {
-                          height: '40px',
-                          borderRadius: '6px',
-                          fontSize: '13.5px',
-                          fontWeight: 500,
-                          '& fieldset': {
-                            borderColor: '#CBD5E1',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: '#94A3B8',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#0B4DB7',
-                            borderWidth: '1.5px',
-                          },
-                        },
-                      }}
-                    />
-                  )}
-                />
-
-                <Box sx={{ mt: 3 }}>
-                  <Button
-                    variant="contained"
-                    disableElevation
-                    onClick={handleSelectCustomerClick}
-                    sx={{
-                      backgroundColor: '#0B4DB7',
-                      color: '#FFFFFF',
-                      fontSize: '13.5px',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      px: 2.6,
-                      py: 0.9,
-                      borderRadius: '6px',
-                      lineHeight: 1.3,
-                      '&:hover': {
-                        backgroundColor: '#083B8D',
-                      },
-                    }}
-                  >
-                    Click to Select
-                  </Button>
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-        </Paper>
-      )}
-
-      {/* View 2: Create Particular View */}
-      {activeSubTab === 'Create Particular' && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', lg: 'row' },
-            gap: 2.5,
-            width: '100%',
-            alignItems: 'flex-start',
-          }}
-        >
-          {/* Left Card: Create Particular Form */}
+      {/* Main Two-Column Grid: Create Bill Form + Items Table */}
+      <Grid container spacing={2.5}>
+        {/* Left Column: Customer & Invoice Details */}
+        <Grid size={{ xs: 12, lg: 4 }}>
           <Paper
             elevation={0}
             sx={{
-              width: { xs: '100%', lg: '360px', xl: '380px' },
-              flexShrink: 0,
+              p: { xs: 2, sm: 2.5 },
+              borderRadius: '14px',
+              border: '1.5px solid #FDE68A',
               backgroundColor: '#FFFFFF',
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0',
-              overflow: 'hidden',
+              boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
+              height: '100%',
+              boxSizing: 'border-box',
             }}
           >
-            <Box
-              sx={{
-                backgroundColor: '#0B4DB7',
-                px: 2.2,
-                py: 1.4,
-                minHeight: '48px',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Typography
-                sx={{
-                  color: '#FFFFFF',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Create Particular - {currentCustomerName || 'Customer'}
-              </Typography>
-            </Box>
+            <Typography sx={{ fontSize: '16px', fontWeight: 800, color: '#B91C1C', mb: 2 }}>
+              1. Invoice Information
+            </Typography>
 
-            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.6 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 1.5 }}>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Customer
-                  </Typography>
-                  <Autocomplete
-                    fullWidth
-                    size="small"
-                    autoHighlight
-                    options={customerOptions}
-                    getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-                    isOptionEqualToValue={(option, val) => option.id === val.id || option.name === val.name}
-                    value={customerOptions.find((c) => c.name === currentCustomerName) || null}
-                    onChange={(_, val) => {
-                      const name = val ? val.name : '';
-                      setCurrentCustomerName(name);
-                      localStorage.setItem('dheeksha_active_customer', name);
-                      if (val) {
-                        setSelectedCustomerId(val.id);
-                        setFilterCustomer(val.name);
-                        setAddCreditCustomerName(val.name);
-                      } else {
-                        setSelectedCustomerId('');
-                      }
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder="Search Customer..."
-                        sx={{
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-root': {
-                            height: '36px',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: '#0F172A',
-                            '& fieldset': {
-                              borderColor: '#CBD5E1',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: '#94A3B8',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#0B4DB7',
-                              borderWidth: '1.5px',
-                            },
-                          },
-                        }}
-                      />
-                    )}
-                  />
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Case Count
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Customer Selector */}
+              <Box>
+                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
+                  Customer Name *
+                </Typography>
+                <Autocomplete
+                  freeSolo
+                  size="small"
+                  options={customerOptions.map((c) => c.name)}
+                  value={customerName}
+                  onInputChange={(_, val) => setCustomerName(val)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select or enter customer name..."
+                      slotProps={{ input: { sx: { fontSize: '13.5px', fontWeight: 600 } } }}
+                    />
+                  )}
+                />
+              </Box>
+
+              {/* Company / Supplier */}
+              <Box>
+                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
+                  Billed By (Company)
+                </Typography>
+                <Autocomplete
+                  freeSolo
+                  size="small"
+                  options={companyOptions.map((c) => c.name)}
+                  value={company}
+                  onInputChange={(_, val) => setCompany(val)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="e.g. Dheeksha Trade..."
+                      slotProps={{ input: { sx: { fontSize: '13.5px', fontWeight: 600 } } }}
+                    />
+                  )}
+                />
+              </Box>
+
+              {/* Bill No & Date in single row */}
+              <Grid container spacing={1.5}>
+                <Grid size={{ xs: 6 }}>
+                  <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
+                    Bill / Inv No
                   </Typography>
                   <TextField
                     fullWidth
                     size="small"
-                    value={caseCount}
-                    onChange={(e) => setCaseCount(e.target.value)}
-                    slotProps={{
-                      input: {
-                        sx: {
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          height: '36px',
-                          backgroundColor: '#F8FAFC',
-                          borderRadius: '6px',
-                          color: '#0F172A',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#CBD5E1',
-                          },
-                        },
-                      },
-                    }}
+                    value={billNo}
+                    onChange={(e) => setBillNo(e.target.value)}
+                    slotProps={{ input: { sx: { fontSize: '13.5px', fontWeight: 700, color: '#B91C1C' } } }}
                   />
-                </Box>
-              </Box>
-
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 1.5 }}>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Company
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
+                    Bill Date
                   </Typography>
-                  <Autocomplete
+                  <TextField
                     fullWidth
                     size="small"
-                    autoHighlight
-                    options={companyOptions}
-                    getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-                    isOptionEqualToValue={(option, val) => option.id === val.id || option.name === val.name}
-                    value={companyOptions.find((c) => c.name === company) || null}
-                    onChange={(_, val) => setCompany(val ? val.name : '')}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder="Search Company..."
-                        sx={{
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-root': {
-                            height: '36px',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: 500,
-                            color: '#0F172A',
-                            '& fieldset': {
-                              borderColor: '#CBD5E1',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: '#94A3B8',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#0B4DB7',
-                              borderWidth: '1.5px',
-                            },
-                          },
-                        }}
-                      />
-                    )}
+                    value={billDate}
+                    onChange={(e) => setBillDate(e.target.value)}
+                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
                   />
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Discount (%)
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 0.5, borderColor: '#FEF3C7' }} />
+
+              {/* Additional Adjustments: Discount, Transport, Packing, Tax */}
+              <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#78350F' }}>
+                Adjustments & Charges
+              </Typography>
+
+              <Grid container spacing={1.5}>
+                <Grid size={{ xs: 6 }}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    Discount (% or ₹)
                   </Typography>
                   <TextField
                     fullWidth
                     size="small"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
-                    slotProps={{
-                      input: {
-                        sx: {
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          height: '36px',
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#CBD5E1',
-                          },
-                        },
-                      },
-                    }}
+                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
                   />
-                </Box>
-              </Box>
+                </Grid>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 1.5 }}>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Transport
+                <Grid size={{ xs: 6 }}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    Transport (₹)
                   </Typography>
                   <TextField
                     fullWidth
                     size="small"
                     value={transport}
                     onChange={(e) => setTransport(e.target.value)}
-                    slotProps={{
-                      input: {
-                        sx: {
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          height: '36px',
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#CBD5E1',
-                          },
-                        },
-                      },
-                    }}
+                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
                   />
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Packing (%)
+                </Grid>
+
+                <Grid size={{ xs: 6 }}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    Packing (₹)
                   </Typography>
                   <TextField
                     fullWidth
                     size="small"
                     value={packing}
                     onChange={(e) => setPacking(e.target.value)}
-                    slotProps={{
-                      input: {
-                        sx: {
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          height: '36px',
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#CBD5E1',
-                          },
-                        },
-                      },
-                    }}
+                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
                   />
-                </Box>
-              </Box>
+                </Grid>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 1.5 }}>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Bill No *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Enter Bill No (e.g. 101)"
-                    value={billNo}
-                    onChange={(e) => setBillNo(e.target.value)}
-                    slotProps={{
-                      input: {
-                        sx: {
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          height: '36px',
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#CBD5E1',
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Tax
+                <Grid size={{ xs: 6 }}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    Tax / GST (%)
                   </Typography>
                   <TextField
                     fullWidth
                     size="small"
                     value={tax}
                     onChange={(e) => setTax(e.target.value)}
-                    slotProps={{
-                      input: {
-                        sx: {
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          height: '36px',
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#CBD5E1',
-                          },
-                        },
-                      },
-                    }}
+                    slotProps={{ input: { sx: { fontSize: '13px', fontWeight: 600 } } }}
                   />
-                </Box>
-              </Box>
+                </Grid>
+              </Grid>
 
+              {/* Summary Total Card */}
               <Box
                 sx={{
-                  backgroundColor: '#F8FAFC',
-                  p: 1.4,
-                  borderRadius: '6px',
-                  border: '1px solid #E2E8F0',
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 1.5,
+                  p: 2,
+                  borderRadius: '10px',
+                  backgroundColor: '#FFFBEB',
+                  border: '1.5px solid #FDE68A',
+                  mt: 1,
                 }}
               >
-                <Box>
-                  <Typography sx={{ fontSize: '11.5px', fontWeight: 600, color: '#64748B', mb: 0.5 }}>
-                    Amount
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography sx={{ fontSize: '13px', color: '#786C58', fontWeight: 600 }}>Subtotal:</Typography>
+                  <Typography sx={{ fontSize: '13px', color: '#1F1714', fontWeight: 700 }}>
+                    ₹{subtotal.toFixed(2)}
                   </Typography>
-                  <Box
-                    sx={{
-                      backgroundColor: '#E2E8F0',
-                      borderRadius: '4px',
-                      px: 1.5,
-                      py: 0.7,
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: '#0F172A',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {subtotalAmount.toFixed(2)}
-                  </Box>
                 </Box>
-                <Box>
-                  <Typography sx={{ fontSize: '11.5px', fontWeight: 600, color: '#64748B', mb: 0.5 }}>
-                    Total
-                  </Typography>
-                  <Box
-                    sx={{
-                      backgroundColor: '#E2E8F0',
-                      borderRadius: '4px',
-                      px: 1.5,
-                      py: 0.7,
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: '#0B4DB7',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {finalTotalAmount}
+                {discountAmount > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography sx={{ fontSize: '13px', color: '#059669', fontWeight: 600 }}>Discount:</Typography>
+                    <Typography sx={{ fontSize: '13px', color: '#059669', fontWeight: 700 }}>
+                      -₹{discountAmount.toFixed(2)}
+                    </Typography>
                   </Box>
+                )}
+                <Divider sx={{ my: 1, borderColor: '#FDE68A' }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#991B1B' }}>
+                    Grand Total:
+                  </Typography>
+                  <Typography sx={{ fontSize: '20px', fontWeight: 900, color: '#B91C1C' }}>
+                    ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
                 </Box>
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 1.5, mt: 0.5 }}>
-                <Box>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                    Date
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="dd-mm-yyyy"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    slotProps={{
-                      input: {
-                        endAdornment: (
-                          <CalendarTodayOutlinedIcon sx={{ fontSize: 16, color: '#1E293B' }} />
-                        ),
-                        sx: {
-                          fontSize: '12.5px',
-                          fontWeight: 500,
-                          height: '36px',
-                          backgroundColor: '#FFFFFF',
-                          borderRadius: '6px',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: '#CBD5E1',
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <Button
-                    variant="contained"
-                    disableElevation
-                    fullWidth
-                    onClick={handleCreateParticular}
-                    disabled={createLoading}
-                    sx={{
-                      backgroundColor: '#0284C7',
-                      color: '#FFFFFF',
-                      height: '36px',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      borderRadius: '6px',
-                      '&:hover': {
-                        backgroundColor: '#0369A1',
-                      },
-                    }}
-                  >
-                    {createLoading ? 'Creating...' : 'Click to Create'}
-                  </Button>
-                </Box>
+              {/* Save & Print Action Buttons */}
+              <Box sx={{ display: 'flex', gap: 1.5, mt: 1 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => handleSaveBill(false)}
+                  disabled={savingBill || productRows.length === 0}
+                  sx={{
+                    borderColor: '#F59E0B',
+                    color: '#92400E',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    py: 1,
+                    borderRadius: '8px',
+                    '&:hover': { borderColor: '#B45309', backgroundColor: '#FFFBEB' },
+                  }}
+                >
+                  Save Bill
+                </Button>
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  disableElevation
+                  onClick={() => handleSaveBill(true)}
+                  disabled={savingBill || productRows.length === 0}
+                  startIcon={savingBill ? <CircularProgress size={16} color="inherit" /> : <PrintOutlinedIcon />}
+                  sx={{
+                    background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    textTransform: 'none',
+                    py: 1,
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                    '&:hover': { background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)' },
+                  }}
+                >
+                  Save & Print
+                </Button>
               </Box>
             </Box>
           </Paper>
+        </Grid>
 
-          {/* Right Card: Product Grid & Entry */}
+        {/* Right Column: Product Selector & Current Bill Table */}
+        <Grid size={{ xs: 12, lg: 8 }}>
           <Paper
             elevation={0}
             sx={{
-              flex: 1,
-              width: '100%',
+              borderRadius: '14px',
+              border: '1.5px solid #FDE68A',
               backgroundColor: '#FFFFFF',
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0',
+              boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
               overflow: 'hidden',
+              mb: 3,
             }}
           >
+            {/* Top Product Entry Bar */}
             <Box
               sx={{
-                backgroundColor: '#0B4DB7',
-                px: 2.2,
-                py: 1.4,
-                minHeight: '48px',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Typography
-                sx={{
-                  color: '#FFFFFF',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Product
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
+                background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+                borderBottom: '2px solid #F59E0B',
                 p: 2,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.2,
-                flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                borderBottom: '1px solid #E2E8F0',
+                px: { xs: 2, sm: 2.5 },
+                color: '#FFFFFF',
               }}
             >
-              <Autocomplete
-                size="small"
-                autoHighlight
-                sx={{ flex: { xs: '1 1 100%', sm: 2.5 }, minWidth: '160px' }}
-                options={productOptions}
-                getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-                isOptionEqualToValue={(option, val) => option.id === val.id || option.name === val.name}
-                value={productOptions.find((p) => p.name === selectedProduct) || null}
-                onChange={(_, val) => setSelectedProduct(val ? val.name : '')}
-                renderInput={(params) => (
+              <Typography sx={{ fontSize: '15px', fontWeight: 800, letterSpacing: '-0.01em', mb: 1.5 }}>
+                2. Add Products from Price List
+              </Typography>
+
+              {/* Product Selection + Qty + Rate + Add Row */}
+              <Grid container spacing={1.5} sx={{ alignItems: 'center' }}>
+                {/* Autocomplete Product Dropdown */}
+                <Grid size={{ xs: 12, sm: 5 }}>
+                  <Autocomplete
+                    size="small"
+                    autoHighlight
+                    options={productOptions}
+                    getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
+                    isOptionEqualToValue={(option, val) => option.id === val.id || option.name === val.name}
+                    value={productOptions.find((p) => p.name === selectedProduct) || null}
+                    onChange={(_, val) => {
+                      if (val) {
+                        setSelectedProduct(val.name);
+                        if (val.rate !== undefined && val.rate > 0) {
+                          setRate(String(val.rate));
+                        }
+                        if (val.unit) {
+                          setUnit(val.unit);
+                        }
+                      } else {
+                        setSelectedProduct('');
+                      }
+                    }}
+                    renderOption={(props, option) => (
+                      <Box
+                        component="li"
+                        {...props}
+                        key={option.id || option.name}
+                        sx={{
+                          display: 'flex !important',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          width: '100%',
+                          py: 0.8,
+                          px: 1.5,
+                          gap: 1,
+                          borderBottom: '1px solid #FEF3C7',
+                          '&:last-child': { borderBottom: 'none' },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714' }}>
+                            {option.name}
+                          </Typography>
+                          {option.category && (
+                            <Typography sx={{ fontSize: '11px', color: '#D97706', fontWeight: 600 }}>
+                              {option.category}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                          {option.rate !== undefined && option.rate > 0 && (
+                            <Typography sx={{ fontSize: '13px', fontWeight: 800, color: '#B91C1C' }}>
+                              ₹{Number(option.rate).toLocaleString('en-IN')}
+                            </Typography>
+                          )}
+                          {option.unit && (
+                            <Typography sx={{ fontSize: '10.5px', color: '#6B7280' }}>
+                              / {option.unit}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    )}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Search product from price list..."
+                        sx={{
+                          backgroundColor: '#FFFFFF',
+                          borderRadius: '6px',
+                          '& .MuiOutlinedInput-root': {
+                            fontSize: '13px',
+                            fontWeight: 600,
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
+
+                {/* Quantity */}
+                <Grid size={{ xs: 4, sm: 2 }}>
                   <TextField
-                    {...params}
-                    placeholder="Search Product..."
+                    fullWidth
+                    size="small"
+                    placeholder="Qty"
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
                     sx={{
                       backgroundColor: '#FFFFFF',
                       borderRadius: '6px',
-                      '& .MuiOutlinedInput-root': {
-                        height: '36px',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        color: '#0F172A',
-                        '& fieldset': {
-                          borderColor: '#CBD5E1',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#94A3B8',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#0B4DB7',
-                          borderWidth: '1.5px',
-                        },
-                      },
+                      '& .MuiOutlinedInput-root': { fontSize: '13px', fontWeight: 600 },
                     }}
                   />
-                )}
-              />
+                </Grid>
 
-              <TextField
-                size="small"
-                placeholder="Case"
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                sx={{
-                  flex: { xs: '1 1 45%', sm: 1 },
-                  '& .MuiOutlinedInput-root': {
-                    height: '36px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    borderRadius: '6px',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
-                  },
-                }}
-              />
-
-              <TextField
-                size="small"
-                placeholder="Rate"
-                type="number"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                sx={{
-                  flex: { xs: '1 1 45%', sm: 1 },
-                  '& .MuiOutlinedInput-root': {
-                    height: '36px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    borderRadius: '6px',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
-                  },
-                }}
-              />
-
-              <TextField
-                size="small"
-                placeholder="Pkt / Units"
-                type="number"
-                value={pkt}
-                onChange={(e) => setPkt(e.target.value)}
-                sx={{
-                  flex: { xs: '1 1 45%', sm: 1 },
-                  '& .MuiOutlinedInput-root': {
-                    height: '36px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    borderRadius: '6px',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
-                  },
-                }}
-              />
-
-              <TextField
-                size="small"
-                placeholder="Amount"
-                value={
-                  quantity && rate
-                    ? (((parseFloat(quantity) || 0) * (parseFloat(pkt) || 1)) * (parseFloat(rate) || 0)).toFixed(2)
-                    : ''
-                }
-                slotProps={{
-                  input: {
-                    readOnly: true,
-                    sx: {
-                      height: '36px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      backgroundColor: '#F1F5F9',
+                {/* Rate */}
+                <Grid size={{ xs: 4, sm: 2.5 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Rate (₹)"
+                    type="number"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    sx={{
+                      backgroundColor: '#FFFFFF',
                       borderRadius: '6px',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
-                    },
-                  },
-                }}
-                sx={{ flex: { xs: '1 1 45%', sm: 1.2 } }}
-              />
+                      '& .MuiOutlinedInput-root': { fontSize: '13px', fontWeight: 800, color: '#B91C1C' },
+                    }}
+                  />
+                </Grid>
 
-              <Button
-                variant="contained"
-                disableElevation
-                onClick={handleAddProductRow}
-                sx={{
-                  backgroundColor: '#0B4DB7',
-                  color: '#FFFFFF',
-                  minWidth: '36px',
-                  width: '36px',
-                  height: '36px',
-                  p: 0,
-                  borderRadius: '6px',
-                  '&:hover': {
-                    backgroundColor: '#083B8D',
-                  },
-                }}
-              >
-                <AddRoundedIcon sx={{ fontSize: 20 }} />
-              </Button>
+                {/* Add Item Button */}
+                <Grid size={{ xs: 4, sm: 2.5 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    disableElevation
+                    onClick={handleAddProductItem}
+                    startIcon={<AddRoundedIcon sx={{ fontSize: 18 }} />}
+                    sx={{
+                      backgroundColor: '#FFFFFF',
+                      color: '#B91C1C',
+                      border: '1.5px solid #FDE68A',
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      textTransform: 'none',
+                      height: '38px',
+                      borderRadius: '6px',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                      '&:hover': { backgroundColor: '#FFFBEB' },
+                    }}
+                  >
+                    Add Item
+                  </Button>
+                </Grid>
+              </Grid>
             </Box>
 
-            <TableContainer>
-              <Table sx={{ width: '100%', borderCollapse: 'collapse' }} aria-label="particular product table">
+            {/* Current Bill Items Table */}
+            <TableContainer sx={{ minHeight: '260px', maxHeight: '380px' }}>
+              <Table stickyHeader size="small" aria-label="bill items table">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                    <TableCell
-                      sx={{
-                        py: 1.4,
-                        px: 2,
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        color: '#1E293B',
-                        letterSpacing: '0.04em',
-                        textAlign: 'center',
-                        borderBottom: '1px solid #E2E8F0',
-                        borderRight: '1px solid #E2E8F0',
-                        width: '30%',
-                      }}
-                    >
-                      PARTICULAR
+                  <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '50px', backgroundColor: '#FFFBEB' }}>
+                      #
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        py: 1.4,
-                        px: 1.5,
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        color: '#1E293B',
-                        letterSpacing: '0.04em',
-                        textAlign: 'center',
-                        borderBottom: '1px solid #E2E8F0',
-                        borderRight: '1px solid #E2E8F0',
-                        width: '14%',
-                      }}
-                    >
-                      CASE
+                    <TableCell sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', backgroundColor: '#FFFBEB' }}>
+                      PRODUCT / PARTICULAR
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        py: 1.4,
-                        px: 1.5,
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        color: '#1E293B',
-                        letterSpacing: '0.04em',
-                        textAlign: 'center',
-                        borderBottom: '1px solid #E2E8F0',
-                        borderRight: '1px solid #E2E8F0',
-                        width: '14%',
-                      }}
-                    >
-                      RATE
+                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '80px', backgroundColor: '#FFFBEB' }}>
+                      UNIT
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        py: 1.4,
-                        px: 1.5,
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        color: '#1E293B',
-                        letterSpacing: '0.04em',
-                        textAlign: 'center',
-                        borderBottom: '1px solid #E2E8F0',
-                        borderRight: '1px solid #E2E8F0',
-                        width: '14%',
-                      }}
-                    >
-                      PKT / UNITS
+                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '80px', backgroundColor: '#FFFBEB' }}>
+                      QTY
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        py: 1.4,
-                        px: 1.5,
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        color: '#1E293B',
-                        letterSpacing: '0.04em',
-                        textAlign: 'center',
-                        borderBottom: '1px solid #E2E8F0',
-                        width: '14%',
-                      }}
-                    >
-                      AMOUNT
+                    <TableCell align="right" sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '100px', backgroundColor: '#FFFBEB' }}>
+                      RATE (₹)
                     </TableCell>
-                    <TableCell
-                      sx={{
-                        py: 1.4,
-                        px: 1.5,
-                        fontSize: '11.5px',
-                        fontWeight: 700,
-                        color: '#1E293B',
-                        letterSpacing: '0.04em',
-                        textAlign: 'center',
-                        borderBottom: '1px solid #E2E8F0',
-                        width: '14%',
-                      }}
-                    >
+                    <TableCell align="right" sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '110px', backgroundColor: '#FFFBEB' }}>
+                      AMOUNT (₹)
+                    </TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '60px', backgroundColor: '#FFFBEB' }}>
                       ACTION
                     </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {productRows.length > 0 ? (
-                    productRows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', fontWeight: 600, fontSize: '13px', color: '#0F172A' }}>
+                  {productRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#9CA3AF' }}>
+                        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#786C58' }}>
+                          No products added to this invoice yet.
+                        </Typography>
+                        <Typography sx={{ fontSize: '12px', color: '#A8998A' }}>
+                          Select a product from the top bar and click "Add Item" to build the bill.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    productRows.map((row, idx) => (
+                      <TableRow key={row.id} sx={{ '&:hover': { backgroundColor: '#FEFDF5' } }}>
+                        <TableCell sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58' }}>
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714' }}>
                           {row.particular}
                         </TableCell>
-                        <TableCell align="center" sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', fontWeight: 500, fontSize: '13px' }}>
-                          {row.quantity}
-                        </TableCell>
-                        <TableCell align="center" sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', fontWeight: 500, fontSize: '13px' }}>
-                          {row.rate}
-                        </TableCell>
-                        <TableCell align="center" sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', fontWeight: 500, fontSize: '13px' }}>
+                        <TableCell align="center" sx={{ fontSize: '12px', color: '#57463A' }}>
                           {row.pktUnit}
                         </TableCell>
-                        <TableCell align="center" sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', fontWeight: 600, fontSize: '13px' }}>
-                          {row.amount}
+                        <TableCell align="center" sx={{ fontSize: '13.5px', fontWeight: 700 }}>
+                          {row.quantity}
                         </TableCell>
-                        <TableCell align="center" sx={{ borderBottom: '1px solid #E2E8F0' }}>
+                        <TableCell align="right" sx={{ fontSize: '13.5px', fontWeight: 700, color: '#78350F' }}>
+                          ₹{Number(row.rate || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontSize: '14px', fontWeight: 800, color: '#B91C1C' }}>
+                          ₹{Number(row.amount || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell align="center">
                           <IconButton
                             size="small"
-                            onClick={() => setProductRows((prev) => prev.filter((p) => p.id !== row.id))}
-                            sx={{ color: '#DC2626', p: 0.3 }}
+                            onClick={() => handleDeleteRow(row.id)}
+                            sx={{ color: '#DC2626', p: 0.5, '&:hover': { backgroundColor: '#FEF2F2' } }}
                           >
                             <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
                           </IconButton>
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : (
-                    <>
-                      <TableRow sx={{ height: '65px' }}>
-                        <TableCell sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0' }} />
-                        <TableCell sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0' }} />
-                        <TableCell sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0' }} />
-                        <TableCell sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0' }} />
-                        <TableCell sx={{ borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0' }} />
-                        <TableCell sx={{ borderBottom: '1px solid #E2E8F0' }} />
-                      </TableRow>
-                    </>
                   )}
                 </TableBody>
               </Table>
             </TableContainer>
           </Paper>
-        </Box>
-      )}
+        </Grid>
+      </Grid>
 
-      {/* View 3: Account Details View */}
-      {activeSubTab === 'Account Details' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Top Metric Cards */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-              gap: 2,
-            }}
-          >
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.2,
-                borderRadius: '10px',
-                border: '1px solid #E2E8F0',
-                backgroundColor: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '10px',
-                  backgroundColor: '#FEF2F2',
-                  color: '#DC2626',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <ReceiptLongRoundedIcon sx={{ fontSize: 24 }} />
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>
-                  Total Purchases (Debit)
-                </Typography>
-                <Typography sx={{ fontSize: '18px', fontWeight: 800, color: '#DC2626' }}>
-                  ₹{overallTotals.totalDebit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </Typography>
-              </Box>
-            </Paper>
-
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.2,
-                borderRadius: '10px',
-                border: '1px solid #E2E8F0',
-                backgroundColor: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '10px',
-                  backgroundColor: '#F0FDF4',
-                  color: '#16A34A',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <AccountBalanceWalletRoundedIcon sx={{ fontSize: 24 }} />
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>
-                  Total Paid / Credits
-                </Typography>
-                <Typography sx={{ fontSize: '18px', fontWeight: 800, color: '#16A34A' }}>
-                  ₹{overallTotals.totalCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </Typography>
-              </Box>
-            </Paper>
-
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.2,
-                borderRadius: '10px',
-                border: '1px solid #E2E8F0',
-                backgroundColor: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '10px',
-                  backgroundColor: overallTotals.netBalance < 0 ? '#FEF2F2' : '#F0FDF4',
-                  color: overallTotals.netBalance < 0 ? '#DC2626' : '#16A34A',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <AccountBalanceWalletRoundedIcon sx={{ fontSize: 24 }} />
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>
-                  Net Outstanding Balance
-                </Typography>
-                <Typography
-                  sx={{
-                    fontSize: '18px',
-                    fontWeight: 800,
-                    color: overallTotals.netBalance < 0 ? '#DC2626' : '#16A34A',
-                  }}
-                >
-                  ₹{overallTotals.netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </Typography>
-              </Box>
-            </Paper>
-          </Box>
-
-          {/* Account Details Table */}
-          <Paper
-            elevation={0}
-            sx={{
-              width: '100%',
-              backgroundColor: '#FFFFFF',
-              borderRadius: '10px',
-              border: '1px solid #E2E8F0',
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                backgroundColor: '#0B4DB7',
-                px: { xs: 2, sm: 3 },
-                py: 1.5,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 1.5,
-                minHeight: '52px',
-              }}
-            >
-              <Typography
-                sx={{
-                  color: '#FFFFFF',
-                  fontSize: '15.5px',
-                  fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Account Details {currentCustomerName || filterCustomer ? `- ${currentCustomerName || filterCustomer}` : ''}
-              </Typography>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  disableElevation
-                  onClick={() => setOpenAccountDateModal(true)}
-                  startIcon={<PrintOutlinedIcon sx={{ fontSize: '18px !important', color: '#0F172A' }} />}
-                  sx={{
-                    backgroundColor: '#FFFFFF',
-                    color: '#0F172A',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    px: 2.2,
-                    py: 0.7,
-                    borderRadius: '6px',
-                    lineHeight: 1.2,
-                    '&:hover': {
-                      backgroundColor: '#F8FAFC',
-                    },
-                  }}
-                >
-                  Click to Print
-                </Button>
-              </Box>
-            </Box>
-
-            <TableContainer>
-              <Table sx={{ width: '100%' }} aria-label="account details table">
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                    <TableCell sx={{ py: 1.5, px: { xs: 2, sm: 3 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', width: '60px' }}>
-                      SL.NO
-                    </TableCell>
-                    <TableCell sx={{ py: 1.5, px: { xs: 1.5, sm: 2.5 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', width: '110px' }}>
-                      DATE
-                    </TableCell>
-                    <TableCell sx={{ py: 1.5, px: { xs: 1.5, sm: 2.5 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', width: '140px' }}>
-                      CUSTOMER
-                    </TableCell>
-                    <TableCell sx={{ py: 1.5, px: { xs: 2, sm: 2.5 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B' }}>
-                      COMPANY NAME
-                    </TableCell>
-                    <TableCell align="right" sx={{ py: 1.5, px: { xs: 1.5, sm: 2.5 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', width: '110px' }}>
-                      DEBIT
-                    </TableCell>
-                    <TableCell align="right" sx={{ py: 1.5, px: { xs: 1.5, sm: 2.5 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', width: '110px' }}>
-                      CREDIT
-                    </TableCell>
-                    <TableCell align="right" sx={{ py: 1.5, px: { xs: 1.5, sm: 2.5 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', width: '120px' }}>
-                      BALANCE
-                    </TableCell>
-                    <TableCell align="center" sx={{ py: 1.5, px: { xs: 2, sm: 3 }, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', width: '70px' }}>
-                      DELETE
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {accountLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                        <CircularProgress size={32} sx={{ color: '#0B4DB7' }} />
-                      </TableCell>
-                    </TableRow>
-                  ) : accountDetails.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 6, color: '#64748B' }}>
-                        No account details found {filterCustomer && filterCustomer !== 'ALL' ? `for ${filterCustomer}` : ''}.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    accountDetails.map((row: any, index: number) => {
-                      const isLast = index === accountDetails.length - 1;
-                      const rowId = row._id || row.id || '';
-                      return (
-                        <TableRow
-                          key={rowId || index}
-                          sx={{
-                            '&:hover': {
-                              backgroundColor: '#F8FAFC',
-                            },
-                          }}
-                        >
-                          <TableCell sx={{ py: 1.6, px: { xs: 2, sm: 3 }, fontSize: '13.5px', fontWeight: 600, color: '#1E293B', borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                            {index + 1}
-                          </TableCell>
-                          <TableCell sx={{ py: 1.6, px: { xs: 1.5, sm: 2.5 }, fontSize: '13.5px', fontWeight: 500, color: '#475569', borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                            {row.date}
-                          </TableCell>
-                          <TableCell sx={{ py: 1.6, px: { xs: 1.5, sm: 2.5 }, fontSize: '13.5px', fontWeight: 700, color: '#0B4DB7', borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                            {row.customerName}
-                          </TableCell>
-                          <TableCell sx={{ py: 1.6, px: { xs: 2, sm: 2.5 }, fontSize: '13.5px', fontWeight: 600, color: '#0F172A', borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                            {row.companyName}
-                          </TableCell>
-                          <TableCell align="right" sx={{ py: 1.6, px: { xs: 1.5, sm: 2.5 }, fontSize: '13.5px', fontWeight: 500, color: '#DC2626', borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                            {row.debit}
-                          </TableCell>
-                          <TableCell align="right" sx={{ py: 1.6, px: { xs: 1.5, sm: 2.5 }, fontSize: '13.5px', fontWeight: 600, color: '#16A34A', borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                            {row.credit}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              py: 1.6,
-                              px: { xs: 1.5, sm: 2.5 },
-                              fontSize: '13.5px',
-                              fontWeight: 700,
-                              color: String(row.balance).startsWith('-') ? '#DC2626' : '#16A34A',
-                              borderBottom: isLast ? 'none' : '1px solid #EEF2F6',
-                            }}
-                          >
-                            {row.balance}
-                          </TableCell>
-                          <TableCell align="center" sx={{ py: 1.6, px: { xs: 2, sm: 3 }, borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                            <Tooltip title="Delete Record" arrow>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteAccountEntry(rowId)}
-                                sx={{
-                                  color: '#64748B',
-                                  backgroundColor: '#F8FAFC',
-                                  border: '1px solid #E2E8F0',
-                                  borderRadius: '6px',
-                                  p: 0.7,
-                                  transition: 'all 0.15s ease',
-                                  '&:hover': {
-                                    color: '#DC2626',
-                                    backgroundColor: '#FEF2F2',
-                                    borderColor: '#FECACA',
-                                  },
-                                }}
-                              >
-                                <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </Box>
-      )}
-
-      {/* View 4: Particular Details View */}
-      {activeSubTab === 'Particular Details' && (
-        <Paper
-          elevation={0}
-          sx={{
-            width: '100%',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '8px',
-            border: '1px solid #E2E8F0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            overflow: 'hidden',
-          }}
-        >
-          <Box
-            sx={{
-              backgroundColor: '#0B4DB7',
-              px: { xs: 2, sm: 3 },
-              py: 1.5,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 1.5,
-              minHeight: '52px',
-            }}
-          >
-            <Typography
-              sx={{
-                color: '#FFFFFF',
-                fontSize: '16px',
-                fontWeight: 700,
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Particular Details (All Bills)
-            </Typography>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Chip
-                label={`${particularDetails.length} Bills`}
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: '#FFFFFF',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                }}
-              />
-              <Button
-                variant="contained"
-                disableElevation
-                onClick={() => setOpenParticularDateModal(true)}
-                startIcon={<PrintOutlinedIcon sx={{ fontSize: '18px !important', color: '#0F172A' }} />}
-                sx={{
-                  backgroundColor: '#FFFFFF',
-                  color: '#0F172A',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  px: 2,
-                  py: 0.6,
-                  borderRadius: '6px',
-                  '&:hover': {
-                    backgroundColor: '#F8FAFC',
-                  },
-                }}
-              >
-                Print Bills List
-              </Button>
-            </Box>
-          </Box>
-
-          <TableContainer>
-            <Table sx={{ width: '100%', borderCollapse: 'collapse' }} aria-label="particular details table">
-              <TableHead>
-                <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '80px' }}>
-                    BILL.NO
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '130px' }}>
-                    CUSTOMER
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '140px' }}>
-                    COMPANY NAME
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '95px' }}>
-                    DATE
-                  </TableCell>
-                  <TableCell align="right" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '100px' }}>
-                    SUBTOTAL
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '80px' }}>
-                    DISCOUNT
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '80px' }}>
-                    PACKING
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '75px' }}>
-                    TAX
-                  </TableCell>
-                  <TableCell align="right" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '110px' }}>
-                    NET TOTAL
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', width: '120px' }}>
-                    TRANSPORT
-                  </TableCell>
-                  <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '11.5px', fontWeight: 700, color: '#1E293B', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', width: '175px' }}>
-                    ACTION
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {particularLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={11} align="center" sx={{ py: 6 }}>
-                      <CircularProgress size={32} sx={{ color: '#0B4DB7' }} />
-                    </TableCell>
-                  </TableRow>
-                ) : particularDetails.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={11} align="center" sx={{ py: 6, color: '#64748B' }}>
-                      No particular bills found {filterCustomer !== 'ALL' ? `for ${filterCustomer}` : ''}.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  particularDetails.map((row, index) => {
-                    const isLast = index === particularDetails.length - 1;
-                    const rowId = row._id || row.id || '';
-                    const subtotalNum = parseFloat(String(row.amount || row.total || '0').replace(/,/g, '')) || 0;
-                    const totalNum = parseFloat(String(row.total || row.amount || '0').replace(/,/g, '')) || 0;
-                    const discStr = row.discount && parseFloat(row.discount) > 0 ? (parseFloat(row.discount) <= 100 ? `${row.discount}%` : `₹${row.discount}`) : '-';
-                    const packStr = row.packing && parseFloat(row.packing) > 0 ? (parseFloat(row.packing) <= 100 ? `${row.packing}%` : `₹${row.packing}`) : '-';
-                    const taxStr = row.tax && parseFloat(row.tax) > 0 ? (parseFloat(row.tax) <= 100 ? `${row.tax}%` : `₹${row.tax}`) : '-';
-                    const hasPdf = Boolean(row.pdfData && row.pdfData.trim() !== '');
-                    const isUploading = uploadingBillId === rowId;
-
-                    return (
-                      <TableRow
-                        key={rowId || index}
-                        sx={{
-                          '&:hover': {
-                            backgroundColor: '#F8FAFC',
-                          },
-                        }}
-                      >
-                        <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '13px', fontWeight: 700, color: '#0F172A', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {row.billNo}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '13px', fontWeight: 700, color: '#0B4DB7', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {row.customerName}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '13px', fontWeight: 600, color: '#0F172A', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {row.companyName}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '12.5px', fontWeight: 500, color: '#475569', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {row.date}
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 1.4, px: 1.5, fontSize: '13px', fontWeight: 600, color: '#475569', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          ₹{subtotalNum.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1, fontSize: '12.5px', fontWeight: 600, color: discStr !== '-' ? '#DC2626' : '#94A3B8', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {discStr}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1, fontSize: '12.5px', fontWeight: 600, color: packStr !== '-' ? '#0F172A' : '#94A3B8', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {packStr}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1, fontSize: '12.5px', fontWeight: 600, color: taxStr !== '-' ? '#0F172A' : '#94A3B8', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {taxStr}
-                        </TableCell>
-                        <TableCell align="right" sx={{ py: 1.4, px: 1.5, fontSize: '13.5px', fontWeight: 800, color: '#0F172A', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          ₹{totalNum.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1.5, fontSize: '12.5px', fontWeight: 500, color: '#334155', borderBottom: isLast ? 'none' : '1px solid #EEF2F6', borderRight: '1px solid #EEF2F6' }}>
-                          {row.transport || row.transportName || '-'}
-                        </TableCell>
-                        <TableCell align="center" sx={{ py: 1.4, px: 1.5, borderBottom: isLast ? 'none' : '1px solid #EEF2F6' }}>
-                          <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 0.6 }}>
-                            <Tooltip title="View" arrow>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenBillPrint(row, false)}
-                                sx={{
-                                  backgroundColor: '#0B4DB7',
-                                  color: '#FFFFFF',
-                                  borderRadius: '4px',
-                                  width: '24px',
-                                  height: '22px',
-                                  p: 0,
-                                  '&:hover': { backgroundColor: '#083B8D' },
-                                }}
-                              >
-                                <VisibilityRoundedIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
-                            </Tooltip>
-
-                            <Tooltip title="Print" arrow>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenBillPrint(row, true)}
-                                sx={{
-                                  backgroundColor: '#334155',
-                                  color: '#FFFFFF',
-                                  borderRadius: '4px',
-                                  width: '24px',
-                                  height: '22px',
-                                  p: 0,
-                                  '&:hover': { backgroundColor: '#1E293B' },
-                                }}
-                              >
-                                <PrintOutlinedIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
-                            </Tooltip>
-
-                            {/* Edit Particular Bill Button */}
-                            <Tooltip title="Edit Bill Details" arrow>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleOpenEditParticular(row)}
-                                sx={{
-                                  backgroundColor: '#0284C7',
-                                  color: '#FFFFFF',
-                                  borderRadius: '4px',
-                                  width: '24px',
-                                  height: '22px',
-                                  p: 0,
-                                  '&:hover': { backgroundColor: '#0369A1' },
-                                }}
-                              >
-                                <ModeEditOutlineRoundedIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
-                            </Tooltip>
-
-                            {/* PDF Upload / View Button (Under 1 MB) */}
-                            <Tooltip
-                              title={
-                                hasPdf
-                                  ? `View PDF (${row.pdfName || 'Attached Document'})`
-                                  : 'Upload PDF (Under 1 MB)'
-                              }
-                              arrow
-                            >
-                              <IconButton
-                                size="small"
-                                onClick={() => (hasPdf ? handleOpenPdfPreview(row) : handleTriggerPdfUpload(rowId))}
-                                disabled={isUploading}
-                                sx={{
-                                  backgroundColor: hasPdf ? '#16A34A' : '#6366F1',
-                                  color: '#FFFFFF',
-                                  borderRadius: '4px',
-                                  width: '24px',
-                                  height: '22px',
-                                  p: 0,
-                                  '&:hover': { backgroundColor: hasPdf ? '#15803D' : '#4F46E5' },
-                                  '&.Mui-disabled': { backgroundColor: '#CBD5E1', color: '#FFFFFF' },
-                                }}
-                              >
-                                {isUploading ? (
-                                  <CircularProgress size={12} sx={{ color: '#FFFFFF' }} />
-                                ) : hasPdf ? (
-                                  <PictureAsPdfRoundedIcon sx={{ fontSize: 14 }} />
-                                ) : (
-                                  <UploadFileRoundedIcon sx={{ fontSize: 14 }} />
-                                )}
-                              </IconButton>
-                            </Tooltip>
-
-                            <Tooltip title="Delete" arrow>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteParticular(rowId)}
-                                sx={{
-                                  backgroundColor: '#DC2626',
-                                  color: '#FFFFFF',
-                                  borderRadius: '4px',
-                                  width: '24px',
-                                  height: '22px',
-                                  p: 0,
-                                  '&:hover': { backgroundColor: '#B91C1C' },
-                                }}
-                              >
-                                <DeleteOutlineRoundedIcon sx={{ fontSize: 14 }} />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      )}
-
-      {/* View 5: Add Credit View */}
-      {activeSubTab === 'Add Credit' && (
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '100%',
-            py: { xs: 2, sm: 4, md: 5 },
-          }}
-        >
-          <Paper
-            elevation={0}
-            sx={{
-              width: '100%',
-              maxWidth: { xs: '100%', sm: '680px', md: '780px', lg: '840px' },
-              backgroundColor: '#FFFFFF',
-              borderRadius: '8px',
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                backgroundColor: '#0B4DB7',
-                px: { xs: 2.5, sm: 3.5 },
-                py: 2,
-                minHeight: '52px',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Typography
-                sx={{
-                  color: '#FFFFFF',
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                Add Credit - {currentCustomerName || 'Customer'}
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                p: { xs: 3, sm: 5, md: 6 },
-                pb: { xs: 4, sm: 6, md: 7 },
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 3,
-              }}
-            >
-              {/* Customer Name */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  gap: { xs: 1, sm: 3.5 },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#0F172A',
-                    minWidth: '150px',
-                    textAlign: { sm: 'right' },
-                  }}
-                >
-                  Customer Name
-                </Typography>
-                <Autocomplete
-                  fullWidth
-                  size="small"
-                  autoHighlight
-                  options={customerOptions}
-                  getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-                  isOptionEqualToValue={(option, val) => option.id === val.id || option.name === val.name}
-                  value={customerOptions.find((c) => c.name === (addCreditCustomerName || currentCustomerName)) || null}
-                  onChange={(_, val) => setAddCreditCustomerName(val ? val.name : '')}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Search Customer..."
-                      sx={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '6px',
-                        '& .MuiOutlinedInput-root': {
-                          height: '42px',
-                          borderRadius: '6px',
-                          fontSize: '13.5px',
-                          fontWeight: 600,
-                          color: '#0F172A',
-                          '& fieldset': {
-                            borderColor: '#CBD5E1',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: '#94A3B8',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#0B4DB7',
-                            borderWidth: '1.5px',
-                          },
-                        },
-                      }}
-                    />
-                  )}
-                />
-              </Box>
-
-              {/* Company Name */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  gap: { xs: 1, sm: 3.5 },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#0F172A',
-                    minWidth: '150px',
-                    textAlign: { sm: 'right' },
-                  }}
-                >
-                  Company Name
-                </Typography>
-                <Autocomplete
-                  fullWidth
-                  size="small"
-                  autoHighlight
-                  options={companyOptions}
-                  getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-                  isOptionEqualToValue={(option, val) => option.id === val.id || option.name === val.name}
-                  value={companyOptions.find((c) => c.name === addCreditCompanyName) || null}
-                  onChange={(_, val) => setAddCreditCompanyName(val ? val.name : '')}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Search Company..."
-                      sx={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '6px',
-                        '& .MuiOutlinedInput-root': {
-                          height: '42px',
-                          borderRadius: '6px',
-                          fontSize: '13.5px',
-                          fontWeight: 500,
-                          color: '#0F172A',
-                          '& fieldset': {
-                            borderColor: '#CBD5E1',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: '#94A3B8',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#0B4DB7',
-                            borderWidth: '1.5px',
-                          },
-                        },
-                      }}
-                    />
-                  )}
-                />
-              </Box>
-
-              {/* Credit Amount */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  gap: { xs: 1, sm: 3.5 },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#0F172A',
-                    minWidth: '150px',
-                    textAlign: { sm: 'right' },
-                  }}
-                >
-                  Credit Amount
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="number"
-                  placeholder="e.g. 50000"
-                  value={creditAmount}
-                  onChange={(e) => setCreditAmount(e.target.value)}
-                  slotProps={{
-                    input: {
-                      sx: {
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        height: '42px',
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '6px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#CBD5E1',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#94A3B8',
-                        },
-                      },
-                    },
-                  }}
-                />
-              </Box>
-
-              {/* Date */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', sm: 'row' },
-                  alignItems: { xs: 'flex-start', sm: 'center' },
-                  gap: { xs: 1, sm: 3.5 },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: '#0F172A',
-                    minWidth: '150px',
-                    textAlign: { sm: 'right' },
-                  }}
-                >
-                  Date
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="dd-mm-yyyy"
-                  value={creditDate}
-                  onChange={(e) => setCreditDate(e.target.value)}
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <CalendarTodayOutlinedIcon sx={{ fontSize: 18, color: '#1E293B' }} />
-                      ),
-                      sx: {
-                        fontSize: '13.5px',
-                        fontWeight: 500,
-                        height: '42px',
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '6px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#CBD5E1',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#94A3B8',
-                        },
-                      },
-                    },
-                  }}
-                />
-              </Box>
-
-              {/* Action Button */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'flex-start',
-                  pl: { xs: 0, sm: '178px' },
-                  mt: 1,
-                }}
-              >
-                <Button
-                  variant="contained"
-                  disableElevation
-                  onClick={handleAddCreditSubmit}
-                  disabled={creditLoading}
-                  sx={{
-                    backgroundColor: '#0B4DB7',
-                    color: '#FFFFFF',
-                    height: '42px',
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    borderRadius: '6px',
-                    px: 3.5,
-                    '&:hover': {
-                      backgroundColor: '#083B8D',
-                    },
-                  }}
-                >
-                  {creditLoading ? 'Saving...' : 'Click to create'}
-                </Button>
-              </Box>
-            </Box>
-          </Paper>
-        </Box>
-      )}
-      {/* Hidden File Input for PDF Upload (Under 1 MB) */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="application/pdf"
-        style={{ display: 'none' }}
-        onChange={handlePdfFileChange}
-      />
-
-      {/* PDF Document Preview & Management Modal */}
-      <Dialog
-        open={Boolean(pdfPreviewModal?.open)}
-        onClose={() => setPdfPreviewModal(null)}
-        maxWidth="md"
-        fullWidth
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: '12px',
-              overflow: 'hidden',
-              height: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-            },
-          },
+      {/* Recent Bills Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          borderRadius: '14px',
+          border: '1.5px solid #FDE68A',
+          backgroundColor: '#FFFFFF',
+          boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
+          overflow: 'hidden',
         }}
       >
-        <DialogTitle
+        {/* Recent Bills Header */}
+        <Box
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: '#0B4DB7',
-            color: '#FFFFFF',
+            background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+            borderBottom: '2px solid #F59E0B',
+            px: { xs: 2, sm: 3 },
             py: 1.5,
-            px: 2.5,
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            justifyContent: 'space-between',
+            gap: 1.5,
+            minHeight: '56px',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PictureAsPdfRoundedIcon sx={{ fontSize: 22, color: '#FFFFFF' }} />
-            <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF' }}>
-              {pdfPreviewModal?.name || 'Attached PDF Document'}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Typography sx={{ color: '#FFFFFF', fontSize: '17px', fontWeight: 800 }}>
+              Recent Bills & Invoices
             </Typography>
-            {pdfPreviewModal?.billNo && (
-              <Chip
-                label={`Bill #${pdfPreviewModal.billNo}`}
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  color: '#FFFFFF',
-                  fontWeight: 600,
-                  fontSize: '11px',
-                  height: '20px',
-                }}
-              />
-            )}
+            <Typography
+              sx={{
+                color: '#FEF08A',
+                fontSize: '12px',
+                fontWeight: 700,
+                backgroundColor: 'rgba(254, 240, 138, 0.2)',
+                px: 1.2,
+                py: 0.2,
+                borderRadius: '10px',
+              }}
+            >
+              {filteredRecentBills.length} bills
+            </Typography>
           </Box>
-          <IconButton
-            size="small"
-            onClick={() => setPdfPreviewModal(null)}
-            sx={{ color: '#FFFFFF', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
-          >
-            <CloseRoundedIcon sx={{ fontSize: 20 }} />
-          </IconButton>
-        </DialogTitle>
 
-        <DialogContent sx={{ p: 0, flex: 1, backgroundColor: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {pdfPreviewModal?.url ? (
-            pdfPreviewModal.url.startsWith('data:image') || pdfPreviewModal.url.match(/\.(jpeg|jpg|png|webp|gif)$/i) || !pdfPreviewModal.url.includes('application/pdf') ? (
-              <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', overflow: 'auto' }}>
-                <img
-                  src={pdfPreviewModal.url}
-                  alt={pdfPreviewModal.name || 'Document'}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    borderRadius: '6px',
-                  }}
-                />
-              </Box>
-            ) : (
-              <iframe
-                src={pdfPreviewModal.url}
-                title="PDF Preview"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  display: 'block',
-                }}
-              />
-            )
-          ) : (
+          {/* Search Box & Refresh */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Box
               sx={{
-                height: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: '#64748B',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '8px',
+                px: 1.2,
+                height: '36px',
+                width: { xs: '100%', sm: '220px' },
+                border: '1.5px solid #FDE68A',
               }}
             >
-              <Typography>No document available</Typography>
+              <SearchRoundedIcon sx={{ color: '#D97706', fontSize: 18, mr: 0.8 }} />
+              <InputBase
+                placeholder="Search bills..."
+                value={billSearchTerm}
+                onChange={(e) => setBillSearchTerm(e.target.value)}
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  width: '100%',
+                  '& input': { p: 0, '&::placeholder': { color: '#A8998A' } },
+                }}
+              />
+              {billSearchTerm && (
+                <IconButton size="small" onClick={() => setBillSearchTerm('')} sx={{ p: 0.3 }}>
+                  <ClearRoundedIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+              )}
             </Box>
-          )}
-        </DialogContent>
-
-        <DialogActions
-          sx={{
-            px: 2.5,
-            py: 1.5,
-            backgroundColor: '#FFFFFF',
-            borderTop: '1px solid #E2E8F0',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Button
-            variant="outlined"
-            color="error"
-            size="small"
-            startIcon={<DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />}
-            onClick={() => pdfPreviewModal?.id && handleDeleteAttachedPdf(pdfPreviewModal.id)}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '12.5px',
-              borderRadius: '6px',
-            }}
-          >
-            Delete Document
-          </Button>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<UploadFileRoundedIcon sx={{ fontSize: 16 }} />}
-              onClick={() => pdfPreviewModal?.id && handleTriggerPdfUpload(pdfPreviewModal.id)}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '12.5px',
-                borderRadius: '6px',
-              }}
-            >
-              Change / Re-upload
-            </Button>
-
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<OpenInNewRoundedIcon sx={{ fontSize: 16 }} />}
-              component="a"
-              href={pdfPreviewModal?.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '12.5px',
-                borderRadius: '6px',
-                color: '#475569',
-                borderColor: '#CBD5E1',
-              }}
-            >
-              Open in New Tab
-            </Button>
 
             <Button
               variant="contained"
-              disableElevation
               size="small"
-              startIcon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />}
-              component="a"
-              href={pdfPreviewModal?.url}
-              download={pdfPreviewModal?.name || 'bill-receipt'}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={fetchRecentBills}
+              startIcon={<RefreshRoundedIcon sx={{ fontSize: 16 }} />}
               sx={{
-                backgroundColor: '#0B4DB7',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
                 color: '#FFFFFF',
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: '12.5px',
-                borderRadius: '6px',
-                '&:hover': { backgroundColor: '#083B8D' },
-              }}
-            >
-              Download
-            </Button>
-          </Box>
-        </DialogActions>
-      </Dialog>
-
-      {/* Bill Print & Preview Modal */}
-      <BillPrintModal
-        open={printModalOpen}
-        onClose={() => setPrintModalOpen(false)}
-        bill={selectedBillForPrint}
-      />
-
-      {/* Toast Notification for PDF Uploads */}
-      <Snackbar
-        open={pdfToast.open}
-        autoHideDuration={4000}
-        onClose={() => setPdfToast((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setPdfToast((prev) => ({ ...prev, open: false }))}
-          severity={pdfToast.severity}
-          variant="filled"
-          sx={{ width: '100%', borderRadius: '8px', fontWeight: 600, fontSize: '13px' }}
-        >
-          {pdfToast.message}
-        </Alert>
-      </Snackbar>
-
-      {/* Account Statement Date Range Print Modal */}
-      <DateRangePrintModal
-        open={openAccountDateModal}
-        onClose={() => setOpenAccountDateModal(false)}
-        title={`Print Account Statement - ${filterCustomer || currentCustomerName || 'All Customers'}`}
-        subtitle="Select transaction date range to filter ledger entries for A4 print."
-        items={accountDetails}
-        getDateFromItem={(a) => a.date || ''}
-        onConfirmPrint={(itemsToPrint, rangeText) => {
-          printLedgerStatementDirectly(
-            filterCustomer || currentCustomerName || 'All Customers',
-            itemsToPrint,
-            rangeText
-          );
-        }}
-      />
-
-      {/* Particulars Bills Date Range Print Modal */}
-      <DateRangePrintModal
-        open={openParticularDateModal}
-        onClose={() => setOpenParticularDateModal(false)}
-        title="Print Particulars Bills Master Report"
-        subtitle="Select bill date range to filter bills for A4 print."
-        items={particularDetails}
-        getDateFromItem={(p) => p.date || ''}
-        onConfirmPrint={(itemsToPrint, rangeText) => {
-          printParticularsListDirectly(itemsToPrint, rangeText);
-        }}
-      />
-
-      {/* Edit Particular Bill Dialog */}
-      <Dialog
-        open={openEditParticularModal}
-        onClose={() => setOpenEditParticularModal(false)}
-        maxWidth="md"
-        fullWidth
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: '12px',
-              p: 1,
-            },
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            pb: 1,
-            borderBottom: '1px solid #EEF2F6',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ModeEditOutlineRoundedIcon sx={{ color: '#0B4DB7', fontSize: 24 }} />
-            <Typography sx={{ fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
-              Edit Bill #{editBillForm.billNo} {editBillForm.customerName ? `- ${editBillForm.customerName}` : ''}
-            </Typography>
-          </Box>
-          <IconButton size="small" onClick={() => setOpenEditParticularModal(false)} sx={{ color: '#64748B' }}>
-            <CloseRoundedIcon sx={{ fontSize: 20 }} />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent sx={{ pt: 2.5 }}>
-          {/* Bill Info Grid */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1.2fr 1.2fr 1fr' }, gap: 2, mb: 2.5 }}>
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Bill No *
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={editBillForm.billNo}
-                onChange={(e) => setEditBillForm((prev) => ({ ...prev, billNo: e.target.value }))}
-                slotProps={{
-                  input: { sx: { fontSize: '13px', fontWeight: 700, borderRadius: '6px' } },
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Customer Name *
-              </Typography>
-              <Autocomplete
-                freeSolo
-                options={customerOptions.map((c) => c.name)}
-                value={editBillForm.customerName}
-                onInputChange={(_e, newVal) => setEditBillForm((prev) => ({ ...prev, customerName: newVal }))}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    size="small"
-                    placeholder="Customer Name"
-                  />
-                )}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Company Name *
-              </Typography>
-              <Autocomplete
-                freeSolo
-                options={companyOptions.map((c) => c.name)}
-                value={editBillForm.companyName}
-                onInputChange={(_e, newVal) => setEditBillForm((prev) => ({ ...prev, companyName: newVal }))}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    size="small"
-                    placeholder="Company Name"
-                  />
-                )}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Date (DD-MM-YYYY)
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={editBillForm.date}
-                onChange={(e) => setEditBillForm((prev) => ({ ...prev, date: e.target.value }))}
-                slotProps={{
-                  input: { sx: { fontSize: '13px', fontWeight: 600, borderRadius: '6px' } },
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Transport Name
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={editBillForm.transport}
-                onChange={(e) => setEditBillForm((prev) => ({ ...prev, transport: e.target.value }))}
-                slotProps={{
-                  input: { sx: { fontSize: '13px', fontWeight: 500, borderRadius: '6px' } },
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                No. of Cases
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={editBillForm.caseCount}
-                onChange={(e) => setEditBillForm((prev) => ({ ...prev, caseCount: e.target.value }))}
-                slotProps={{
-                  input: { sx: { fontSize: '13px', fontWeight: 500, borderRadius: '6px' } },
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Discount (% or ₹)
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={editBillForm.discount}
-                onChange={(e) => setEditBillForm((prev) => ({ ...prev, discount: e.target.value }))}
-                slotProps={{
-                  input: { sx: { fontSize: '13px', fontWeight: 500, borderRadius: '6px' } },
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Packing (% or ₹)
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={editBillForm.packing}
-                onChange={(e) => setEditBillForm((prev) => ({ ...prev, packing: e.target.value }))}
-                slotProps={{
-                  input: { sx: { fontSize: '13px', fontWeight: 500, borderRadius: '6px' } },
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#475569', mb: 0.5 }}>
-                Tax (% or ₹)
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                value={editBillForm.tax}
-                onChange={(e) => setEditBillForm((prev) => ({ ...prev, tax: e.target.value }))}
-                slotProps={{
-                  input: { sx: { fontSize: '13px', fontWeight: 500, borderRadius: '6px' } },
-                }}
-              />
-            </Box>
-          </Box>
-
-          {/* Product Items Header */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, mt: 1 }}>
-            <Typography sx={{ fontSize: '14.5px', fontWeight: 800, color: '#0F172A' }}>
-              Product Items ({editBillForm.products.length})
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={handleAddEditProductRow}
-              startIcon={<AddRoundedIcon sx={{ fontSize: 16 }} />}
-              sx={{
-                fontSize: '12px',
+                border: '1px solid rgba(254, 240, 138, 0.4)',
                 fontWeight: 700,
                 textTransform: 'none',
-                borderRadius: '6px',
+                height: '36px',
+                borderRadius: '8px',
+                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.3)' },
               }}
             >
-              Add Item
+              Refresh
             </Button>
           </Box>
+        </Box>
 
-          {/* Product Items Table */}
-          <TableContainer sx={{ border: '1px solid #E2E8F0', borderRadius: '8px', mb: 2 }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                  <TableCell sx={{ fontSize: '11px', fontWeight: 700, width: '40px' }}>#</TableCell>
-                  <TableCell sx={{ fontSize: '11px', fontWeight: 700 }}>Particular / Item</TableCell>
-                  <TableCell sx={{ fontSize: '11px', fontWeight: 700, width: '90px' }}>Qty</TableCell>
-                  <TableCell sx={{ fontSize: '11px', fontWeight: 700, width: '90px' }}>Rate (₹)</TableCell>
-                  <TableCell sx={{ fontSize: '11px', fontWeight: 700, width: '90px' }}>Unit</TableCell>
-                  <TableCell align="right" sx={{ fontSize: '11px', fontWeight: 700, width: '110px' }}>Amount (₹)</TableCell>
-                  <TableCell align="center" sx={{ fontSize: '11px', fontWeight: 700, width: '50px' }}>Del</TableCell>
+        {/* Recent Bills Table */}
+        <TableContainer sx={{ maxHeight: '420px' }}>
+          <Table stickyHeader sx={{ width: '100%' }} aria-label="recent bills table">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
+                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '110px' }}>
+                  BILL NO
+                </TableCell>
+                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '110px' }}>
+                  DATE
+                </TableCell>
+                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB' }}>
+                  CUSTOMER NAME
+                </TableCell>
+                <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB' }}>
+                  COMPANY
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '90px' }}>
+                  ITEMS
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '130px' }}>
+                  TOTAL AMOUNT (₹)
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '130px' }}>
+                  ACTIONS
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loadingRecent ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                    <CircularProgress size={32} sx={{ color: '#DC2626' }} />
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {editBillForm.products.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 3, color: '#64748B', fontSize: '12.5px' }}>
-                      No items. Click "+ Add Item" above to add products.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  editBillForm.products.map((prod, idx) => (
-                    <TableRow key={prod.id || idx}>
-                      <TableCell sx={{ fontSize: '12px', fontWeight: 600 }}>{idx + 1}</TableCell>
-                      <TableCell>
-                        <TextField
-                          fullWidth
+              ) : filteredRecentBills.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#786C58' }}>
+                    {billSearchTerm ? `No bills matching "${billSearchTerm}" found.` : 'No bills created yet.'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredRecentBills.map((bill, index) => {
+                  const isLast = index === filteredRecentBills.length - 1;
+                  const totalAmt = parseFloat(String(bill.total || bill.amount || '0').replace(/,/g, '')) || 0;
+                  const prodCount = (bill.products || []).length;
+
+                  return (
+                    <TableRow key={bill._id || bill.id || index} sx={{ '&:hover': { backgroundColor: '#FEFDF5' } }}>
+                      <TableCell sx={{ fontSize: '13.5px', fontWeight: 800, color: '#B91C1C', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                        #{bill.billNo}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#57463A', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                        {bill.date}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                        {bill.customerName}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '13px', color: '#786C58', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                        {bill.companyName || 'Dheeksha Trade'}
+                      </TableCell>
+                      <TableCell align="center" sx={{ borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                        <Chip
+                          label={`${prodCount} ${prodCount === 1 ? 'item' : 'items'}`}
                           size="small"
-                          placeholder="Item Name"
-                          value={prod.particular}
-                          onChange={(e) => handleUpdateEditProductRow(idx, 'particular', e.target.value)}
-                          slotProps={{
-                            input: { sx: { fontSize: '12.5px', fontWeight: 600, height: '32px' } },
-                          }}
+                          sx={{ fontSize: '11.5px', fontWeight: 700, backgroundColor: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}
                         />
                       </TableCell>
-                      <TableCell>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          placeholder="Qty"
-                          value={prod.quantity}
-                          onChange={(e) => handleUpdateEditProductRow(idx, 'quantity', e.target.value)}
-                          slotProps={{
-                            input: { sx: { fontSize: '12.5px', height: '32px' } },
-                          }}
-                        />
+                      <TableCell align="right" sx={{ fontSize: '14.5px', fontWeight: 800, color: '#B91C1C', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                        ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
-                      <TableCell>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          placeholder="Rate"
-                          value={prod.rate}
-                          onChange={(e) => handleUpdateEditProductRow(idx, 'rate', e.target.value)}
-                          slotProps={{
-                            input: { sx: { fontSize: '12.5px', height: '32px' } },
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          placeholder="Pkt/Bag"
-                          value={prod.pktUnit}
-                          onChange={(e) => handleUpdateEditProductRow(idx, 'pktUnit', e.target.value)}
-                          slotProps={{
-                            input: { sx: { fontSize: '12.5px', height: '32px' } },
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontSize: '12.5px', fontWeight: 700, color: '#0F172A' }}>
-                        ₹{parseFloat(prod.amount || '0').toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDeleteEditProductRow(idx)}
-                          sx={{ color: '#DC2626', p: 0.4 }}
-                        >
-                          <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
+                      <TableCell align="center" sx={{ borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                          {/* Print Invoice */}
+                          <Tooltip title="Print / View Invoice" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => handlePrintRecentBill(bill)}
+                              sx={{
+                                color: '#D97706',
+                                backgroundColor: '#FFFBEB',
+                                border: '1px solid #FDE68A',
+                                borderRadius: '6px',
+                                p: 0.6,
+                                '&:hover': { color: '#FFFFFF', backgroundColor: '#D97706' },
+                              }}
+                            >
+                              <PrintOutlinedIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+
+                          {/* Delete Bill */}
+                          <Tooltip title="Delete Bill" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteRecentBill(bill)}
+                              sx={{
+                                color: '#DC2626',
+                                backgroundColor: '#FEF2F2',
+                                border: '1px solid #FECACA',
+                                borderRadius: '6px',
+                                p: 0.6,
+                                '&:hover': { color: '#FFFFFF', backgroundColor: '#DC2626' },
+                              }}
+                            >
+                              <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {/* Live Summary Calculation Banner */}
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: '8px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 2,
-            }}
-          >
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', fontSize: '12.5px' }}>
-              <div>
-                <span style={{ color: '#64748B' }}>Subtotal: </span>
-                <strong style={{ color: '#0F172A' }}>₹ {editSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-              </div>
-              {editDiscountVal > 0 && (
-                <div>
-                  <span style={{ color: '#DC2626' }}>Discount: </span>
-                  <strong style={{ color: '#DC2626' }}>- ₹ {editDiscountVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-                </div>
+                  );
+                })
               )}
-              {editPackingVal > 0 && (
-                <div>
-                  <span style={{ color: '#64748B' }}>Packing: </span>
-                  <strong>+ ₹ {editPackingVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-                </div>
-              )}
-              {editTaxVal > 0 && (
-                <div>
-                  <span style={{ color: '#64748B' }}>Tax: </span>
-                  <strong>+ ₹ {editTaxVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
-                </div>
-              )}
-            </Box>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
 
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography sx={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
-                Updated Net Total
-              </Typography>
-              <Typography sx={{ fontSize: '18px', fontWeight: 900, color: '#0B4DB7' }}>
-                ₹ {parseFloat(editFinalTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </Typography>
-            </Box>
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button onClick={() => setOpenEditParticularModal(false)} sx={{ color: '#64748B', fontWeight: 600, textTransform: 'none' }}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={handleSaveEditParticular}
-            disabled={editBillLoading}
-            sx={{
-              backgroundColor: '#0B4DB7',
-              color: '#FFFFFF',
-              fontWeight: 700,
-              textTransform: 'none',
-              px: 3,
-              borderRadius: '6px',
-              '&:hover': { backgroundColor: '#083B8D' },
-            }}
-          >
-            {editBillLoading ? 'Saving...' : 'Save Bill Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Hidden File Input for Transport / Godown Receipt Upload */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*,application/pdf"
-        style={{ display: 'none' }}
-        onChange={handlePdfFileChange}
-      />
+      {/* Print Bill Modal */}
+      {printModalOpen && selectedBillForPrint && (
+        <BillPrintModal
+          open={printModalOpen}
+          onClose={() => {
+            setPrintModalOpen(false);
+            setSelectedBillForPrint(null);
+          }}
+          bill={selectedBillForPrint}
+        />
+      )}
     </Box>
   );
 };
-

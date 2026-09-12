@@ -136,8 +136,10 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
       slotProps={{
         paper: {
           sx: {
-            borderRadius: '12px',
+            borderRadius: '14px',
             p: 1,
+            border: '1px solid #FDE68A',
+            backgroundColor: '#FFFFFF',
           },
         },
       }}
@@ -150,102 +152,59 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
           pb: 1,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <CalendarMonthRoundedIcon sx={{ color: '#0B4DB7', fontSize: 24 }} />
-          <Typography sx={{ fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+          <CalendarMonthRoundedIcon sx={{ color: '#B91C1C', fontSize: 24 }} />
+          <Typography sx={{ fontSize: '18px', fontWeight: 800, color: '#B91C1C' }}>
             {title || 'Select Date Range for Print'}
           </Typography>
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ color: '#64748B' }}>
+        <IconButton size="small" onClick={onClose} sx={{ color: '#78350F' }}>
           <CloseRoundedIcon sx={{ fontSize: 20 }} />
         </IconButton>
       </DialogTitle>
 
       <DialogContent>
-        <Typography sx={{ fontSize: '13px', color: '#64748B', mb: 2 }}>
+        <Typography sx={{ fontSize: '13px', color: '#78350F', mb: 2 }}>
           {subtitle || 'Filter the data between specific dates before printing on standard A4 format.'}
         </Typography>
 
         {/* Quick Date Presets */}
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2.5 }}>
-          <Chip
-            label="All Time"
-            onClick={() => handleSelectPreset('ALL')}
-            sx={{
-              fontWeight: 600,
-              fontSize: '12px',
-              backgroundColor: activePreset === 'ALL' ? '#0B4DB7' : '#F1F5F9',
-              color: activePreset === 'ALL' ? '#FFFFFF' : '#334155',
-              cursor: 'pointer',
-              '&:hover': { backgroundColor: activePreset === 'ALL' ? '#083B8D' : '#E2E8F0' },
-            }}
-          />
-          <Chip
-            label="Today"
-            onClick={() => handleSelectPreset('TODAY')}
-            sx={{
-              fontWeight: 600,
-              fontSize: '12px',
-              backgroundColor: activePreset === 'TODAY' ? '#0B4DB7' : '#F1F5F9',
-              color: activePreset === 'TODAY' ? '#FFFFFF' : '#334155',
-              cursor: 'pointer',
-              '&:hover': { backgroundColor: activePreset === 'TODAY' ? '#083B8D' : '#E2E8F0' },
-            }}
-          />
-          <Chip
-            label="This Month"
-            onClick={() => handleSelectPreset('THIS_MONTH')}
-            sx={{
-              fontWeight: 600,
-              fontSize: '12px',
-              backgroundColor: activePreset === 'THIS_MONTH' ? '#0B4DB7' : '#F1F5F9',
-              color: activePreset === 'THIS_MONTH' ? '#FFFFFF' : '#334155',
-              cursor: 'pointer',
-              '&:hover': { backgroundColor: activePreset === 'THIS_MONTH' ? '#083B8D' : '#E2E8F0' },
-            }}
-          />
-          <Chip
-            label="Last Month"
-            onClick={() => handleSelectPreset('LAST_MONTH')}
-            sx={{
-              fontWeight: 600,
-              fontSize: '12px',
-              backgroundColor: activePreset === 'LAST_MONTH' ? '#0B4DB7' : '#F1F5F9',
-              color: activePreset === 'LAST_MONTH' ? '#FFFFFF' : '#334155',
-              cursor: 'pointer',
-              '&:hover': { backgroundColor: activePreset === 'LAST_MONTH' ? '#083B8D' : '#E2E8F0' },
-            }}
-          />
-          <Chip
-            label="Last 30 Days"
-            onClick={() => handleSelectPreset('LAST_30_DAYS')}
-            sx={{
-              fontWeight: 600,
-              fontSize: '12px',
-              backgroundColor: activePreset === 'LAST_30_DAYS' ? '#0B4DB7' : '#F1F5F9',
-              color: activePreset === 'LAST_30_DAYS' ? '#FFFFFF' : '#334155',
-              cursor: 'pointer',
-              '&:hover': { backgroundColor: activePreset === 'LAST_30_DAYS' ? '#083B8D' : '#E2E8F0' },
-            }}
-          />
-          <Chip
-            label="This Year"
-            onClick={() => handleSelectPreset('THIS_YEAR')}
-            sx={{
-              fontWeight: 600,
-              fontSize: '12px',
-              backgroundColor: activePreset === 'THIS_YEAR' ? '#0B4DB7' : '#F1F5F9',
-              color: activePreset === 'THIS_YEAR' ? '#FFFFFF' : '#334155',
-              cursor: 'pointer',
-              '&:hover': { backgroundColor: activePreset === 'THIS_YEAR' ? '#083B8D' : '#E2E8F0' },
-            }}
-          />
+          {['ALL', 'TODAY', 'THIS_MONTH', 'LAST_MONTH', 'LAST_30_DAYS', 'THIS_YEAR'].map((preset) => {
+            const labels: Record<string, string> = {
+              ALL: 'All Time',
+              TODAY: 'Today',
+              THIS_MONTH: 'This Month',
+              LAST_MONTH: 'Last Month',
+              LAST_30_DAYS: 'Last 30 Days',
+              THIS_YEAR: 'This Year',
+            };
+            const isSelected = activePreset === preset;
+            return (
+              <Chip
+                key={preset}
+                label={labels[preset]}
+                onClick={() => handleSelectPreset(preset)}
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  backgroundColor: isSelected ? '#B91C1C' : '#FFFDF7',
+                  color: isSelected ? '#FFFFFF' : '#78350F',
+                  border: isSelected ? '1px solid #991B1B' : '1px solid #FDE68A',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: isSelected ? '#991B1B' : '#FFFBEB',
+                  },
+                }}
+              />
+            );
+          })}
         </Box>
 
         {/* Date Inputs Grid */}
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2.5 }}>
           <Box>
-            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#475569', mb: 0.6 }}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#1F1714', mb: 0.6 }}>
               From Date
             </Typography>
             <TextField
@@ -259,13 +218,21 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
               }}
               slotProps={{
                 input: {
-                  sx: { fontSize: '13.5px', fontWeight: 500, borderRadius: '6px' },
+                  sx: {
+                    fontSize: '13.5px',
+                    fontWeight: 500,
+                    borderRadius: '8px',
+                    backgroundColor: '#FFFDF7',
+                    '& fieldset': { borderColor: '#FDE68A' },
+                    '&:hover fieldset': { borderColor: '#D97706' },
+                    '&.Mui-focused fieldset': { borderColor: '#DC2626' },
+                  },
                 },
               }}
             />
           </Box>
           <Box>
-            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#475569', mb: 0.6 }}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#1F1714', mb: 0.6 }}>
               To Date
             </Typography>
             <TextField
@@ -279,7 +246,15 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
               }}
               slotProps={{
                 input: {
-                  sx: { fontSize: '13.5px', fontWeight: 500, borderRadius: '6px' },
+                  sx: {
+                    fontSize: '13.5px',
+                    fontWeight: 500,
+                    borderRadius: '8px',
+                    backgroundColor: '#FFFDF7',
+                    '& fieldset': { borderColor: '#FDE68A' },
+                    '&:hover fieldset': { borderColor: '#D97706' },
+                    '&.Mui-focused fieldset': { borderColor: '#DC2626' },
+                  },
                 },
               }}
             />
@@ -290,7 +265,7 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
         <Box
           sx={{
             p: 1.6,
-            borderRadius: '8px',
+            borderRadius: '10px',
             backgroundColor: filteredItems.length > 0 ? '#F0FDF4' : '#FEF2F2',
             border: '1px solid',
             borderColor: filteredItems.length > 0 ? '#BBF7D0' : '#FECACA',
@@ -309,7 +284,7 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
             >
               {filteredItems.length} Records ready to print
             </Typography>
-            <Typography sx={{ fontSize: '11.5px', color: '#64748B', mt: 0.2 }}>
+            <Typography sx={{ fontSize: '11.5px', color: '#78350F', mt: 0.2 }}>
               Format: Standard A4 • Clean Multi-Page Layout
             </Typography>
           </Box>
@@ -327,7 +302,7 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-        <Button onClick={onClose} sx={{ color: '#64748B', fontWeight: 600, textTransform: 'none' }}>
+        <Button onClick={onClose} sx={{ color: '#78350F', fontWeight: 600, textTransform: 'none' }}>
           Cancel
         </Button>
         <Button
@@ -337,13 +312,16 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
           disabled={filteredItems.length === 0}
           startIcon={<PrintOutlinedIcon sx={{ fontSize: 18 }} />}
           sx={{
-            backgroundColor: '#0B4DB7',
+            background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
             color: '#FFFFFF',
             fontWeight: 700,
             textTransform: 'none',
             px: 2.5,
-            borderRadius: '6px',
-            '&:hover': { backgroundColor: '#083B8D' },
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
+            },
           }}
         >
           Print A4 Report ({filteredItems.length})

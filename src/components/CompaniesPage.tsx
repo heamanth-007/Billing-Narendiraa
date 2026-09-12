@@ -156,7 +156,7 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
           sx={{
             fontSize: '30px',
             fontWeight: 800,
-            color: '#0F172A',
+            color: '#B91C1C',
             letterSpacing: '-0.025em',
             lineHeight: 1.2,
           }}
@@ -177,21 +177,26 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              backgroundColor: '#F1F3F9',
+              backgroundColor: '#FFFFFF',
               borderRadius: '8px',
+              border: '1.5px solid #FDE68A',
               px: 1.5,
               height: '38px',
               width: { xs: '100%', sm: '230px' },
               boxSizing: 'border-box',
-              transition: 'background-color 0.2s',
+              transition: 'all 0.2s',
               '&:hover': {
-                backgroundColor: '#ECEFF6',
+                borderColor: '#F59E0B',
+              },
+              '&:focus-within': {
+                borderColor: '#DC2626',
+                boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
               },
             }}
           >
             <SearchRoundedIcon
               sx={{
-                color: '#8E9AA8',
+                color: '#D97706',
                 fontSize: 19,
                 mr: 1,
               }}
@@ -202,13 +207,13 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
               onChange={(e) => setSearchTerm(e.target.value)}
               sx={{
                 fontSize: '13.5px',
-                fontWeight: 500,
-                color: '#1E293B',
+                fontWeight: 600,
+                color: '#1F1714',
                 width: '100%',
                 '& input': {
                   p: 0,
                   '&::placeholder': {
-                    color: '#8E9AA8',
+                    color: '#A8998A',
                     opacity: 1,
                   },
                 },
@@ -223,8 +228,9 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
             startIcon={<PrintOutlinedIcon sx={{ fontSize: 18 }} />}
             sx={{
               backgroundColor: '#FFFFFF',
-              color: '#0F172A',
-              borderColor: '#CBD5E1',
+              color: '#7C2D12',
+              borderColor: '#FCD34D',
+              borderWidth: '1.5px',
               height: '38px',
               px: 1.8,
               borderRadius: '8px',
@@ -233,10 +239,10 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
               textTransform: 'none',
               letterSpacing: '-0.01em',
               whiteSpace: 'nowrap',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+              boxShadow: '0 1px 2px rgba(217, 119, 6, 0.08)',
               '&:hover': {
-                backgroundColor: '#F8FAFC',
-                borderColor: '#94A3B8',
+                backgroundColor: '#FFFBEB',
+                borderColor: '#F59E0B',
               },
             }}
           >
@@ -250,8 +256,9 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
             onClick={onAddCompany}
             startIcon={<AddRoundedIcon sx={{ fontSize: 19 }} />}
             sx={{
-              backgroundColor: '#0B4DB7',
+              background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
               color: '#FFFFFF',
+              border: '1px solid #F59E0B',
               height: '38px',
               px: 2,
               borderRadius: '8px',
@@ -260,9 +267,9 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
               textTransform: 'none',
               letterSpacing: '-0.01em',
               whiteSpace: 'nowrap',
-              boxShadow: '0 1px 2px rgba(11, 77, 183, 0.15)',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
               '&:hover': {
-                backgroundColor: '#083B8D',
+                background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
               },
             }}
           >
@@ -278,24 +285,24 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
           width: '100%',
           backgroundColor: '#FFFFFF',
           borderRadius: '12px',
-          border: '1px solid #EEF2F6',
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 1px 2px -1px rgba(15, 23, 42, 0.03)',
+          border: '1.5px solid #FDE68A',
+          boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
           overflow: 'hidden',
         }}
       >
         <TableContainer>
           <Table sx={{ width: '100%' }} aria-label="companies table">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+              <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                 <TableCell
                   sx={{
                     py: 1.6,
                     px: 3,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                     width: '100px',
                   }}
                 >
@@ -305,11 +312,11 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                   sx={{
                     py: 1.6,
                     px: 3,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                   }}
                 >
                   COMPANY NAME
@@ -318,11 +325,11 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                   sx={{
                     py: 1.6,
                     px: 3,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                   }}
                 >
                   ADDRESS
@@ -331,11 +338,11 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                   sx={{
                     py: 1.6,
                     px: 3,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                   }}
                 >
                   GSTIN
@@ -345,11 +352,11 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                   sx={{
                     py: 1.6,
                     px: 3,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                     width: '120px',
                   }}
                 >
@@ -362,12 +369,12 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={32} sx={{ color: '#0B4DB7' }} />
+                    <CircularProgress size={32} sx={{ color: '#DC2626' }} />
                   </TableCell>
                 </TableRow>
               ) : filteredCompanies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 6, color: '#64748B' }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 6, color: '#786C58' }}>
                     No companies found. Click "Add Company" to create one.
                   </TableCell>
                 </TableRow>
@@ -407,7 +414,7 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                         sx={{
                           py: 1.6,
                           px: 3,
-                          borderBottom: isLast ? 'none' : '1px solid #F8FAFC',
+                          borderBottom: isLast ? 'none' : '1px solid #F7EEDB',
                         }}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -416,13 +423,14 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                               width: 32,
                               height: 32,
                               borderRadius: '50%',
-                              backgroundColor: company.avatarBg || '#DBEAFE',
-                              color: company.avatarColor || '#0B4DB7',
+                              backgroundColor: company.avatarBg || '#FEF3C7',
+                              color: company.avatarColor || '#B91C1C',
+                              border: '1px solid #FDE68A',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '13px',
-                              fontWeight: 700,
+                              fontWeight: 800,
                               flexShrink: 0,
                             }}
                           >
@@ -432,7 +440,7 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                             sx={{
                               fontSize: '14px',
                               fontWeight: 700,
-                              color: '#0F172A',
+                              color: '#1F1714',
                               letterSpacing: '-0.01em',
                             }}
                           >
@@ -449,7 +457,7 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                           fontSize: '13.5px',
                           color: '#334155',
                           fontWeight: 500,
-                          borderBottom: isLast ? 'none' : '1px solid #F8FAFC',
+                          borderBottom: isLast ? 'none' : '1px solid #F7EEDB',
                         }}
                       >
                         {company.address}
@@ -463,7 +471,7 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                           fontSize: '13.5px',
                           color: '#334155',
                           fontWeight: 600,
-                          borderBottom: isLast ? 'none' : '1px solid #F8FAFC',
+                          borderBottom: isLast ? 'none' : '1px solid #F7EEDB',
                         }}
                       >
                         {company.gstin}
@@ -475,7 +483,7 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                         sx={{
                           py: 1.6,
                           px: 3,
-                          borderBottom: isLast ? 'none' : '1px solid #F8FAFC',
+                          borderBottom: isLast ? 'none' : '1px solid #F7EEDB',
                         }}
                       >
                         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.8 }}>
@@ -485,16 +493,16 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                               size="small"
                               onClick={() => handleOpenEdit(company)}
                               sx={{
-                                color: '#64748B',
-                                backgroundColor: '#F8FAFC',
-                                border: '1px solid #E2E8F0',
+                                color: '#D97706',
+                                backgroundColor: '#FFFBEB',
+                                border: '1px solid #FDE68A',
                                 borderRadius: '6px',
                                 p: 0.7,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  color: '#0B4DB7',
-                                  backgroundColor: '#EFF6FF',
-                                  borderColor: '#BFDBFE',
+                                  color: '#FFFFFF',
+                                  backgroundColor: '#D97706',
+                                  borderColor: '#D97706',
                                 },
                               }}
                             >
@@ -508,16 +516,16 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
                               size="small"
                               onClick={() => handleDelete(recordId)}
                               sx={{
-                                color: '#64748B',
-                                backgroundColor: '#F8FAFC',
-                                border: '1px solid #E2E8F0',
+                                color: '#DC2626',
+                                backgroundColor: '#FEF2F2',
+                                border: '1px solid #FECACA',
                                 borderRadius: '6px',
                                 p: 0.7,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  color: '#DC2626',
-                                  backgroundColor: '#FEF2F2',
-                                  borderColor: '#FECACA',
+                                  color: '#FFFFFF',
+                                  backgroundColor: '#DC2626',
+                                  borderColor: '#DC2626',
                                 },
                               }}
                             >
@@ -550,7 +558,7 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
           },
         }}
       >
-        <DialogTitle sx={{ fontSize: '18px', fontWeight: 700, color: '#0F172A', pb: 1 }}>
+        <DialogTitle sx={{ fontSize: '18px', fontWeight: 700, color: '#B91C1C', pb: 1 }}>
           Edit Company Details
         </DialogTitle>
         <DialogContent>
@@ -614,13 +622,13 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
             onClick={handleSaveEdit}
             disabled={editLoading}
             sx={{
-              backgroundColor: '#0B4DB7',
+              background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
               color: '#FFFFFF',
               fontWeight: 700,
               textTransform: 'none',
               px: 2.5,
               borderRadius: '6px',
-              '&:hover': { backgroundColor: '#083B8D' },
+              '&:hover': { background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)' },
             }}
           >
             {editLoading ? 'Saving...' : 'Save Changes'}

@@ -50,8 +50,8 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
         gst: formData.gstin.trim() || 'N/A',
         address: formData.billingAddress.trim(),
         avatarLetter: formData.fullName.trim().charAt(0).toUpperCase(),
-        avatarBg: '#DBEAFE',
-        avatarColor: '#0B4DB7',
+        avatarBg: '#FEF3C7',
+        avatarColor: '#B91C1C',
       });
       if (onSubmitSuccess) {
         onSubmitSuccess();
@@ -80,7 +80,7 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
           sx={{
             fontSize: '28px',
             fontWeight: 800,
-            color: '#0F172A',
+            color: '#B91C1C',
             letterSpacing: '-0.025em',
             lineHeight: 1.2,
             mb: 0.8,
@@ -91,12 +91,12 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
         <Typography
           sx={{
             fontSize: '14px',
-            color: '#64748B',
+            color: '#78350F',
             fontWeight: 500,
             letterSpacing: '-0.01em',
           }}
         >
-          Enter the details below to register a new client profile into the Dheeksha platform.
+          Enter the details below to register a new customer profile into the billing platform.
         </Typography>
       </Box>
 
@@ -106,9 +106,9 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
         sx={{
           width: '100%',
           backgroundColor: '#FFFFFF',
-          borderRadius: '12px',
-          border: '1px solid #EEF2F6',
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 1px 2px -1px rgba(15, 23, 42, 0.03)',
+          borderRadius: '14px',
+          border: '1px solid #FDE68A',
+          boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
           p: { xs: 2.5, sm: 3.5, md: 4 },
           boxSizing: 'border-box',
         }}
@@ -127,7 +127,7 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   fontSize: '13px',
                   fontWeight: 700,
-                  color: '#1E293B',
+                  color: '#1F1714',
                   mb: 1,
                   letterSpacing: '-0.01em',
                 }}
@@ -138,30 +138,30 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FFFDF7',
+                  border: '1px solid #FDE68A',
                   borderRadius: '8px',
                   px: 1.5,
                   height: '42px',
                   transition: 'all 0.15s ease',
                   '&:focus-within': {
-                    borderColor: '#0B4DB7',
+                    borderColor: '#DC2626',
                     backgroundColor: '#FFFFFF',
-                    boxShadow: '0 0 0 3px rgba(11, 77, 183, 0.1)',
+                    boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
                   },
                 }}
               >
                 <InputBase
                   fullWidth
-                  placeholder="e.g. Acme Corporation"
+                  placeholder="e.g. Acme Fireworks"
                   value={formData.fullName}
                   onChange={handleChange('fullName')}
                   sx={{
                     fontSize: '13.5px',
                     fontWeight: 500,
-                    color: '#0F172A',
+                    color: '#1F1714',
                     '& input::placeholder': {
-                      color: '#94A3B8',
+                      color: '#9CA3AF',
                       opacity: 1,
                     },
                   }}
@@ -175,7 +175,7 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   fontSize: '13px',
                   fontWeight: 700,
-                  color: '#1E293B',
+                  color: '#1F1714',
                   mb: 1,
                   letterSpacing: '-0.01em',
                 }}
@@ -186,16 +186,16 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FFFDF7',
+                  border: '1px solid #FDE68A',
                   borderRadius: '8px',
                   px: 1.5,
                   height: '42px',
                   transition: 'all 0.15s ease',
                   '&:focus-within': {
-                    borderColor: '#0B4DB7',
+                    borderColor: '#DC2626',
                     backgroundColor: '#FFFFFF',
-                    boxShadow: '0 0 0 3px rgba(11, 77, 183, 0.1)',
+                    boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
                   },
                 }}
               >
@@ -207,9 +207,9 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                   sx={{
                     fontSize: '13.5px',
                     fontWeight: 500,
-                    color: '#0F172A',
+                    color: '#1F1714',
                     '& input::placeholder': {
-                      color: '#94A3B8',
+                      color: '#9CA3AF',
                       opacity: 1,
                     },
                   }}
@@ -223,7 +223,7 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   fontSize: '13px',
                   fontWeight: 700,
-                  color: '#1E293B',
+                  color: '#1F1714',
                   mb: 1,
                   letterSpacing: '-0.01em',
                 }}
@@ -234,30 +234,30 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FFFDF7',
+                  border: '1px solid #FDE68A',
                   borderRadius: '8px',
                   px: 1.5,
                   height: '42px',
                   transition: 'all 0.15s ease',
                   '&:focus-within': {
-                    borderColor: '#0B4DB7',
+                    borderColor: '#DC2626',
                     backgroundColor: '#FFFFFF',
-                    boxShadow: '0 0 0 3px rgba(11, 77, 183, 0.1)',
+                    boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
                   },
                 }}
               >
                 <InputBase
                   fullWidth
-                  placeholder="e.g. 29ABCDE1234F1Z5"
+                  placeholder="e.g. 33ABCDE1234F1Z5"
                   value={formData.gstin}
                   onChange={handleChange('gstin')}
                   sx={{
                     fontSize: '13.5px',
                     fontWeight: 500,
-                    color: '#0F172A',
+                    color: '#1F1714',
                     '& input::placeholder': {
-                      color: '#94A3B8',
+                      color: '#9CA3AF',
                       opacity: 1,
                     },
                   }}
@@ -271,7 +271,7 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   fontSize: '13px',
                   fontWeight: 700,
-                  color: '#1E293B',
+                  color: '#1F1714',
                   mb: 1,
                   letterSpacing: '-0.01em',
                 }}
@@ -282,30 +282,30 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FFFDF7',
+                  border: '1px solid #FDE68A',
                   borderRadius: '8px',
                   px: 1.5,
                   height: '42px',
                   transition: 'all 0.15s ease',
                   '&:focus-within': {
-                    borderColor: '#0B4DB7',
+                    borderColor: '#DC2626',
                     backgroundColor: '#FFFFFF',
-                    boxShadow: '0 0 0 3px rgba(11, 77, 183, 0.1)',
+                    boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
                   },
                 }}
               >
                 <InputBase
                   fullWidth
-                  placeholder="e.g. 123 Industrial Area, Phase 2"
+                  placeholder="e.g. 123 Bazaar Street, Sivakasi"
                   value={formData.billingAddress}
                   onChange={handleChange('billingAddress')}
                   sx={{
                     fontSize: '13.5px',
                     fontWeight: 500,
-                    color: '#0F172A',
+                    color: '#1F1714',
                     '& input::placeholder': {
-                      color: '#94A3B8',
+                      color: '#9CA3AF',
                       opacity: 1,
                     },
                   }}
@@ -323,7 +323,7 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
               gap: 1.5,
               mt: 4,
               pt: 3,
-              borderTop: '1px solid #EEF2F6',
+              borderTop: '1px solid #FEF3C7',
             }}
           >
             <Button
@@ -336,12 +336,12 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 borderRadius: '8px',
                 fontSize: '13.5px',
                 fontWeight: 600,
-                color: '#64748B',
-                borderColor: '#E2E8F0',
+                color: '#78350F',
+                borderColor: '#FDE68A',
                 textTransform: 'none',
                 '&:hover': {
-                  borderColor: '#CBD5E1',
-                  backgroundColor: '#F8FAFC',
+                  borderColor: '#D97706',
+                  backgroundColor: '#FFFBEB',
                 },
               }}
             >
@@ -362,11 +362,13 @@ export const AddCustomerPage: FC<AddCustomerPageProps> = ({
                 borderRadius: '8px',
                 fontSize: '13.5px',
                 fontWeight: 700,
-                backgroundColor: '#0B4DB7',
+                background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
                 color: '#FFFFFF',
                 textTransform: 'none',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
                 '&:hover': {
-                  backgroundColor: '#083B8D',
+                  background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
                 },
               }}
             >

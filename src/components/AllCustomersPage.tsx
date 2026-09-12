@@ -341,7 +341,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               sx={{
                 fontSize: { xs: '24px', sm: '28px', md: '30px' },
                 fontWeight: 800,
-                color: '#0F172A',
+                color: '#B91C1C',
                 letterSpacing: '-0.025em',
                 lineHeight: 1.2,
               }}
@@ -349,7 +349,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               All Customers & Ledger Balances
             </Typography>
           </Box>
-          <Typography sx={{ fontSize: '13.5px', color: '#64748B', mt: 0.5, fontWeight: 500 }}>
+          <Typography sx={{ fontSize: '13.5px', color: '#786C58', mt: 0.5, fontWeight: 600 }}>
             Complete overview of customer accounts with Debit (Purchases), Credit (Paid/Advance), and Net Balance
           </Typography>
         </Box>
@@ -370,7 +370,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               alignItems: 'center',
               backgroundColor: '#FFFFFF',
               borderRadius: '8px',
-              border: '1px solid #E2E8F0',
+              border: '1.5px solid #FDE68A',
               px: 1.5,
               height: '40px',
               width: { xs: '100%', sm: '280px' },
@@ -378,17 +378,17 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               transition: 'all 0.2s',
               '&:hover': {
-                borderColor: '#CBD5E1',
+                borderColor: '#F59E0B',
               },
               '&:focus-within': {
-                borderColor: '#0B4DB7',
-                boxShadow: '0 0 0 2px rgba(11, 77, 183, 0.1)',
+                borderColor: '#DC2626',
+                boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
               },
             }}
           >
             <SearchRoundedIcon
               sx={{
-                color: '#8E9AA8',
+                color: '#D97706',
                 fontSize: 20,
                 mr: 1,
               }}
@@ -399,13 +399,13 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               sx={{
                 fontSize: '13.5px',
-                fontWeight: 500,
-                color: '#1E293B',
+                fontWeight: 600,
+                color: '#1F1714',
                 width: '100%',
                 '& input': {
                   p: 0,
                   '&::placeholder': {
-                    color: '#8E9AA8',
+                    color: '#A8998A',
                     opacity: 1,
                   },
                 },
@@ -420,8 +420,9 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
             startIcon={<PrintOutlinedIcon sx={{ fontSize: 19 }} />}
             sx={{
               backgroundColor: '#FFFFFF',
-              color: '#0F172A',
-              borderColor: '#CBD5E1',
+              color: '#7C2D12',
+              borderColor: '#FCD34D',
+              borderWidth: '1.5px',
               height: '40px',
               px: 2,
               borderRadius: '8px',
@@ -430,10 +431,10 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               textTransform: 'none',
               letterSpacing: '-0.01em',
               whiteSpace: 'nowrap',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+              boxShadow: '0 1px 2px rgba(217, 119, 6, 0.08)',
               '&:hover': {
-                backgroundColor: '#F8FAFC',
-                borderColor: '#94A3B8',
+                backgroundColor: '#FFFBEB',
+                borderColor: '#F59E0B',
               },
             }}
           >
@@ -448,8 +449,9 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               onClick={onAddNewCustomer}
               startIcon={<AddRoundedIcon sx={{ fontSize: 20 }} />}
               sx={{
-                backgroundColor: '#0B4DB7',
+                background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
                 color: '#FFFFFF',
+                border: '1px solid #F59E0B',
                 height: '40px',
                 px: 2.4,
                 borderRadius: '8px',
@@ -458,9 +460,9 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                 textTransform: 'none',
                 letterSpacing: '-0.01em',
                 whiteSpace: 'nowrap',
-                boxShadow: '0 2px 4px rgba(11, 77, 183, 0.2)',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
                 '&:hover': {
-                  backgroundColor: '#083B8D',
+                  background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
                 },
               }}
             >
@@ -490,9 +492,9 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
           sx={{
             p: 2,
             borderRadius: '12px',
-            border: '1px solid #EEF2F6',
+            border: '1.5px solid #FDE68A',
             backgroundColor: '#FFFFFF',
-            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            boxShadow: '0 2px 8px rgba(217, 119, 6, 0.06)',
             display: 'flex',
             alignItems: 'center',
             gap: 1.8,
@@ -503,8 +505,9 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               width: 44,
               height: 44,
               borderRadius: '10px',
-              backgroundColor: '#EFF6FF',
-              color: '#0B4DB7',
+              backgroundColor: '#FEF3C7',
+              color: '#B91C1C',
+              border: '1px solid #FDE68A',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -514,10 +517,10 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
             <PeopleAltRoundedIcon sx={{ fontSize: 24 }} />
           </Box>
           <Box>
-            <Typography sx={{ fontSize: '11.5px', fontWeight: 600, color: '#64748B' }}>
+            <Typography sx={{ fontSize: '11.5px', fontWeight: 700, color: '#786C58' }}>
               Total Customers
             </Typography>
-            <Typography sx={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', lineHeight: 1.2, mt: 0.3 }}>
+            <Typography sx={{ fontSize: '20px', fontWeight: 800, color: '#1F1714', lineHeight: 1.2, mt: 0.3 }}>
               {financialTotals.totalCount}
             </Typography>
           </Box>
@@ -687,15 +690,15 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
           label={`All Customers (${financialTotals.totalCount})`}
           onClick={() => setStatusFilter('ALL')}
           sx={{
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: '13px',
-            backgroundColor: statusFilter === 'ALL' ? '#0B4DB7' : '#FFFFFF',
-            color: statusFilter === 'ALL' ? '#FFFFFF' : '#475569',
-            border: '1px solid',
-            borderColor: statusFilter === 'ALL' ? '#0B4DB7' : '#E2E8F0',
+            backgroundColor: statusFilter === 'ALL' ? '#B91C1C' : '#FFFFFF',
+            color: statusFilter === 'ALL' ? '#FFFFFF' : '#786C58',
+            border: '1.5px solid',
+            borderColor: statusFilter === 'ALL' ? '#B91C1C' : '#FDE68A',
             cursor: 'pointer',
             '&:hover': {
-              backgroundColor: statusFilter === 'ALL' ? '#083B8D' : '#F1F5F9',
+              backgroundColor: statusFilter === 'ALL' ? '#991B1B' : '#FFFBEB',
             },
           }}
         />
@@ -703,11 +706,11 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
           label={`Pending Due (${financialTotals.pendingCustomersCount})`}
           onClick={() => setStatusFilter('PENDING')}
           sx={{
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: '13px',
             backgroundColor: statusFilter === 'PENDING' ? '#DC2626' : '#FFFFFF',
             color: statusFilter === 'PENDING' ? '#FFFFFF' : '#DC2626',
-            border: '1px solid',
+            border: '1.5px solid',
             borderColor: statusFilter === 'PENDING' ? '#DC2626' : '#FECACA',
             cursor: 'pointer',
             '&:hover': {
@@ -719,15 +722,15 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
           label={`Settled (${financialTotals.settledCustomersCount})`}
           onClick={() => setStatusFilter('SETTLED')}
           sx={{
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: '13px',
-            backgroundColor: statusFilter === 'SETTLED' ? '#16A34A' : '#FFFFFF',
-            color: statusFilter === 'SETTLED' ? '#FFFFFF' : '#16A34A',
-            border: '1px solid',
-            borderColor: statusFilter === 'SETTLED' ? '#16A34A' : '#BBF7D0',
+            backgroundColor: statusFilter === 'SETTLED' ? '#059669' : '#FFFFFF',
+            color: statusFilter === 'SETTLED' ? '#FFFFFF' : '#059669',
+            border: '1.5px solid',
+            borderColor: statusFilter === 'SETTLED' ? '#059669' : '#BBF7D0',
             cursor: 'pointer',
             '&:hover': {
-              backgroundColor: statusFilter === 'SETTLED' ? '#15803D' : '#F0FDF4',
+              backgroundColor: statusFilter === 'SETTLED' ? '#047857' : '#F0FDF4',
             },
           }}
         />
@@ -735,22 +738,22 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
           label={`Advance Customers (${financialTotals.advanceCustomersCount})`}
           onClick={() => setStatusFilter('ADVANCE')}
           sx={{
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: '13px',
-            backgroundColor: statusFilter === 'ADVANCE' ? '#0284C7' : '#FFFFFF',
-            color: statusFilter === 'ADVANCE' ? '#FFFFFF' : '#0284C7',
-            border: '1px solid',
-            borderColor: statusFilter === 'ADVANCE' ? '#0284C7' : '#BAE6FD',
+            backgroundColor: statusFilter === 'ADVANCE' ? '#D97706' : '#FFFFFF',
+            color: statusFilter === 'ADVANCE' ? '#FFFFFF' : '#D97706',
+            border: '1.5px solid',
+            borderColor: statusFilter === 'ADVANCE' ? '#D97706' : '#FDE68A',
             cursor: 'pointer',
             '&:hover': {
-              backgroundColor: statusFilter === 'ADVANCE' ? '#0369A1' : '#F0F9FF',
+              backgroundColor: statusFilter === 'ADVANCE' ? '#B45309' : '#FFFBEB',
             },
           }}
         />
 
-        <Box sx={{ ml: 'auto', display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.8, color: '#64748B' }}>
-          <InfoOutlinedIcon sx={{ fontSize: 16 }} />
-          <Typography sx={{ fontSize: '12px', fontWeight: 500 }}>
+        <Box sx={{ ml: 'auto', display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.8, color: '#786C58' }}>
+          <InfoOutlinedIcon sx={{ fontSize: 16, color: '#D97706' }} />
+          <Typography sx={{ fontSize: '12px', fontWeight: 600 }}>
             Advance: Credit &gt; Debit | Due: Debit &gt; Credit
           </Typography>
         </Box>
@@ -763,24 +766,24 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
           width: '100%',
           backgroundColor: '#FFFFFF',
           borderRadius: '12px',
-          border: '1px solid #EEF2F6',
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 1px 2px -1px rgba(15, 23, 42, 0.03)',
+          border: '1.5px solid #FDE68A',
+          boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
           overflow: 'hidden',
         }}
       >
         <TableContainer>
           <Table sx={{ minWidth: 950 }} aria-label="all customers balance table">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+              <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                 <TableCell
                   sx={{
                     py: 1.8,
                     px: 2.5,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                     width: '80px',
                   }}
                 >
@@ -790,11 +793,11 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                   sx={{
                     py: 1.8,
                     px: 2.5,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                   }}
                 >
                   CUSTOMER NAME & CONTACT
@@ -803,11 +806,11 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                   sx={{
                     py: 1.8,
                     px: 2.5,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#475569',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#7C2D12',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                   }}
                 >
                   ADDRESS & GST
@@ -817,11 +820,11 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                   sx={{
                     py: 1.8,
                     px: 2.5,
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    color: '#1E293B',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: '#B91C1C',
                     letterSpacing: '0.04em',
-                    borderBottom: '1px solid #EEF2F6',
+                    borderBottom: '2px solid #FDE68A',
                     width: '150px',
                   }}
                 >
@@ -903,12 +906,12 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={32} sx={{ color: '#0B4DB7' }} />
+                    <CircularProgress size={32} sx={{ color: '#DC2626' }} />
                   </TableCell>
                 </TableRow>
               ) : filteredCustomers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#64748B' }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#786C58' }}>
                     {searchTerm || statusFilter !== 'ALL'
                       ? 'No customers match your search criteria.'
                       : 'No customers found.'}
@@ -932,7 +935,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                       sx={{
                         transition: 'background-color 0.15s ease',
                         '&:hover': {
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: '#FEFDF5',
                         },
                       }}
                     >
@@ -942,9 +945,9 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                           py: 1.8,
                           px: 2.5,
                           fontSize: '13px',
-                          color: '#64748B',
+                          color: '#786C58',
                           fontWeight: 600,
-                          borderBottom: isLast ? 'none' : '1px solid #F1F5F9',
+                          borderBottom: isLast ? 'none' : '1px solid #F7EEDB',
                         }}
                       >
                         {idDisplay}
@@ -955,7 +958,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                         sx={{
                           py: 1.8,
                           px: 2.5,
-                          borderBottom: isLast ? 'none' : '1px solid #F1F5F9',
+                          borderBottom: isLast ? 'none' : '1px solid #F7EEDB',
                         }}
                       >
                         <Box
@@ -972,13 +975,14 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                               width: 36,
                               height: 36,
                               borderRadius: '50%',
-                              backgroundColor: customer.avatarBg || '#DBEAFE',
-                              color: customer.avatarColor || '#0B4DB7',
+                              backgroundColor: customer.avatarBg || '#FEF3C7',
+                              color: customer.avatarColor || '#B91C1C',
+                              border: '1px solid #FDE68A',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '14px',
-                              fontWeight: 700,
+                              fontWeight: 800,
                               flexShrink: 0,
                             }}
                           >
@@ -989,17 +993,17 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                               sx={{
                                 fontSize: '14.5px',
                                 fontWeight: 700,
-                                color: '#0F172A',
+                                color: '#1F1714',
                                 letterSpacing: '-0.01em',
                                 '&:hover': {
-                                  color: '#0B4DB7',
+                                  color: '#DC2626',
                                   textDecoration: 'underline',
                                 },
                               }}
                             >
                               {customer.name}
                             </Typography>
-                            <Typography sx={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>
+                            <Typography sx={{ fontSize: '12px', color: '#786C58', fontWeight: 600 }}>
                               📞 {customer.mobile || 'N/A'}
                             </Typography>
                           </Box>
@@ -1159,13 +1163,14 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                                 fontSize: '11.5px',
                                 fontWeight: 700,
                                 textTransform: 'none',
-                                color: '#0B4DB7',
+                                color: '#1E40AF',
                                 borderColor: '#BFDBFE',
                                 backgroundColor: '#EFF6FF',
                                 borderRadius: '6px',
                                 '&:hover': {
-                                  backgroundColor: '#DBEAFE',
-                                  borderColor: '#93C5FD',
+                                  backgroundColor: '#1E40AF',
+                                  borderColor: '#1E40AF',
+                                  color: '#FFFFFF',
                                 },
                               }}
                             >
@@ -1179,16 +1184,16 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                               size="small"
                               onClick={() => handleOpenPayment(customer)}
                               sx={{
-                                color: '#16A34A',
-                                backgroundColor: '#F0FDF4',
-                                border: '1px solid #BBF7D0',
+                                color: '#059669',
+                                backgroundColor: '#ECFDF5',
+                                border: '1px solid #A7F3D0',
                                 borderRadius: '6px',
                                 p: 0.7,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
                                   color: '#FFFFFF',
-                                  backgroundColor: '#16A34A',
-                                  borderColor: '#16A34A',
+                                  backgroundColor: '#059669',
+                                  borderColor: '#059669',
                                 },
                               }}
                             >
@@ -1202,16 +1207,16 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                               size="small"
                               onClick={() => handleOpenEdit(customer)}
                               sx={{
-                                color: '#64748B',
-                                backgroundColor: '#F8FAFC',
-                                border: '1px solid #E2E8F0',
+                                color: '#D97706',
+                                backgroundColor: '#FFFBEB',
+                                border: '1px solid #FDE68A',
                                 borderRadius: '6px',
                                 p: 0.7,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  color: '#0B4DB7',
-                                  backgroundColor: '#EFF6FF',
-                                  borderColor: '#BFDBFE',
+                                  color: '#FFFFFF',
+                                  backgroundColor: '#D97706',
+                                  borderColor: '#D97706',
                                 },
                               }}
                             >
@@ -1225,16 +1230,16 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                               size="small"
                               onClick={() => handleDelete(recordId)}
                               sx={{
-                                color: '#64748B',
-                                backgroundColor: '#F8FAFC',
-                                border: '1px solid #E2E8F0',
+                                color: '#DC2626',
+                                backgroundColor: '#FEF2F2',
+                                border: '1px solid #FECACA',
                                 borderRadius: '6px',
                                 p: 0.7,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  color: '#DC2626',
-                                  backgroundColor: '#FEF2F2',
-                                  borderColor: '#FECACA',
+                                  color: '#FFFFFF',
+                                  backgroundColor: '#DC2626',
+                                  borderColor: '#DC2626',
                                 },
                               }}
                             >
@@ -1548,13 +1553,13 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
             onClick={handleSaveEdit}
             disabled={editLoading}
             sx={{
-              backgroundColor: '#0B4DB7',
+              background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
               color: '#FFFFFF',
               fontWeight: 700,
               textTransform: 'none',
               px: 2.5,
               borderRadius: '6px',
-              '&:hover': { backgroundColor: '#083B8D' },
+              '&:hover': { background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)' },
             }}
           >
             {editLoading ? 'Saving...' : 'Save Changes'}

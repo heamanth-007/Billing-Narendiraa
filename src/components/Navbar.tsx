@@ -1,32 +1,41 @@
-import { useState, type FC, type MouseEvent } from 'react';
+import { useState, useEffect, type FC, type MouseEvent } from 'react';
 import { Box, Typography, Menu, MenuItem, ListItemIcon, Divider } from '@mui/material';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
+import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import { getStoredSettings, type CompanySettings } from './SettingsPage';
 
-export type NavTab = 'Customers' | 'Company' | 'Product' | 'Particulars' | 'All Customers';
+export type NavTab = 'All Customers' | 'Billing' | 'Categories' | 'Price List' | 'Product' | 'Settings';
 
 interface NavbarProps {
   activeTab?: NavTab;
   onSelectTab?: (tab: NavTab) => void;
-  onNavigateCustomers?: () => void;
   onLogout?: () => void;
 }
 
 export const Navbar: FC<NavbarProps> = ({
-  activeTab = 'Customers',
+  activeTab = 'All Customers',
   onSelectTab,
-  onNavigateCustomers,
   onLogout,
 }) => {
-  const tabs: NavTab[] = ['Customers', 'Company', 'Product', 'Particulars', 'All Customers'];
+  const tabs: NavTab[] = ['All Customers', 'Billing', 'Categories', 'Price List', 'Product', 'Settings'];
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [companySettings, setCompanySettings] = useState<CompanySettings>(getStoredSettings);
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setCompanySettings(getStoredSettings());
+    };
+    window.addEventListener('dheeksha_settings_updated', handleSettingsUpdate);
+    return () => {
+      window.removeEventListener('dheeksha_settings_updated', handleSettingsUpdate);
+    };
+  }, []);
 
   const handleTabClick = (tab: NavTab) => {
     if (onSelectTab) {
       onSelectTab(tab);
-    } else if (tab === 'Customers' && onNavigateCustomers) {
-      onNavigateCustomers();
     }
   };
 
@@ -49,9 +58,10 @@ export const Navbar: FC<NavbarProps> = ({
       sx={{
         width: '100%',
         backgroundColor: '#FFFFFF',
-        borderBottom: '1px solid #EEF2F6',
-        px: { xs: 2.5, md: 4.5 },
-        height: '64px',
+        borderBottom: '2px solid #FDE68A',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFDF7 100%)',
+        px: { xs: 2, md: 4 },
+        height: '66px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -59,55 +69,87 @@ export const Navbar: FC<NavbarProps> = ({
         top: 0,
         zIndex: 1100,
         boxSizing: 'border-box',
+        boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
       }}
     >
-      {/* Left Logo Section */}
+      {/* Left Logo Section with Festive Balaji Crackers Gold & Crimson Styling */}
       <Box
-        onClick={() => handleTabClick('Customers')}
-        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}
+        onClick={() => handleTabClick('All Customers')}
+        sx={{ display: 'flex', alignItems: 'center', gap: 0.8, cursor: 'pointer' }}
       >
-        {/* Stylized D Logo Badge */}
-        <Box
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '8px',
-            border: '1px solid #E2E8F0',
-            backgroundColor: '#FFFFFF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-            overflow: 'hidden',
-          }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="2" width="20" height="20" rx="4" fill="#F8FAFC" />
-            <path
-              d="M7 6H13C16.3137 6 19 8.68629 19 12C19 15.3137 16.3137 18 13 18H7V6Z"
-              stroke="#0B4DB7"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M10 9.5H13C14.3807 9.5 15.5 10.6193 15.5 12C15.5 13.3807 14.3807 14.5 13 14.5H10V9.5Z"
-              fill="#0B4DB7"
-            />
-          </svg>
-        </Box>
+        {/* Stylized Logo Badge / Uploaded Logo */}
+        {companySettings.logoUrl ? (
+          <Box
+            component="img"
+            src={companySettings.logoUrl}
+            alt="Company Logo"
+            sx={{
+              height: 36,
+              maxWidth: 48,
+              width: 'auto',
+              objectFit: 'contain',
+              backgroundColor: 'transparent',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.12))',
+              display: 'block',
+              mr: 0.2,
+            }}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: '9px',
+              border: '1.5px solid #F59E0B',
+              background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+              overflow: 'hidden',
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M7 6H13C16.3137 6 19 8.68629 19 12C19 15.3137 16.3137 18 13 18H7V6Z"
+                stroke="#FEF08A"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M10 9.5H13C14.3807 9.5 15.5 10.6193 15.5 12C15.5 13.3807 14.3807 14.5 13 14.5H10V9.5Z"
+                fill="#FEF08A"
+              />
+            </svg>
+          </Box>
+        )}
 
-        <Typography
-          variant="h6"
-          sx={{
-            fontWeight: 700,
-            fontSize: '18px',
-            color: '#0F172A',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Dheeksha
-        </Typography>
+        <Box>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 800,
+              fontSize: '17px',
+              color: '#B91C1C',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.1,
+            }}
+          >
+            {companySettings.companyName || 'Dheeksha Trade Link'}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: '10.5px',
+              fontWeight: 700,
+              color: '#D97706',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {companySettings.city || 'Sivakasi'} Fireworks & Trade
+          </Typography>
+        </Box>
       </Box>
 
       {/* Center Navigation Links */}
@@ -116,7 +158,7 @@ export const Navbar: FC<NavbarProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: { xs: 3, md: 4.5 },
+          gap: { xs: 2.5, md: 4 },
           height: '100%',
         }}
       >
@@ -132,26 +174,26 @@ export const Navbar: FC<NavbarProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 cursor: 'pointer',
-                transition: 'color 0.15s ease',
+                transition: 'all 0.15s ease',
               }}
             >
               <Typography
                 sx={{
-                  fontWeight: isActive ? 600 : 500,
+                  fontWeight: isActive ? 700 : 500,
                   fontSize: '14.5px',
-                  color: isActive ? '#0B4DB7' : '#475569',
+                  color: isActive ? '#B91C1C' : '#57463A',
                   letterSpacing: '-0.01em',
                   px: 0.5,
-                  transition: 'color 0.15s ease',
+                  transition: 'all 0.15s ease',
                   '&:hover': {
-                    color: '#0B4DB7',
+                    color: '#B91C1C',
                   },
                 }}
               >
                 {tab}
               </Typography>
 
-              {/* Active indicator underline bar */}
+              {/* Active indicator underline bar in Ruby Red with Gold glow */}
               {isActive && (
                 <Box
                   sx={{
@@ -159,10 +201,11 @@ export const Navbar: FC<NavbarProps> = ({
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    height: '3px',
-                    backgroundColor: '#0B4DB7',
-                    borderTopLeftRadius: '2px',
-                    borderTopRightRadius: '2px',
+                    height: '3.5px',
+                    background: 'linear-gradient(90deg, #DC2626 0%, #F59E0B 100%)',
+                    borderTopLeftRadius: '3px',
+                    borderTopRightRadius: '3px',
+                    boxShadow: '0 -2px 6px rgba(220, 38, 38, 0.35)',
                   }}
                 />
               )}
@@ -176,19 +219,20 @@ export const Navbar: FC<NavbarProps> = ({
         <Box
           onClick={handleProfileClick}
           sx={{
-            width: 34,
-            height: 34,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
-            backgroundColor: '#0B4DB7',
+            background: 'linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%)',
+            border: '1.5px solid #FDE68A',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            boxShadow: '0 1px 3px rgba(11, 77, 183, 0.25)',
+            boxShadow: '0 2px 6px rgba(30, 64, 175, 0.3)',
             '&:hover': {
-              backgroundColor: '#083B8D',
-              transform: 'scale(1.05)',
+              transform: 'scale(1.06)',
+              boxShadow: '0 3px 10px rgba(30, 64, 175, 0.4)',
             },
           }}
         >
@@ -205,34 +249,49 @@ export const Navbar: FC<NavbarProps> = ({
           slotProps={{
             paper: {
               sx: {
-                borderRadius: '10px',
-                minWidth: '160px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                border: '1px solid #E2E8F0',
+                borderRadius: '12px',
+                minWidth: '170px',
+                boxShadow: '0 8px 30px rgba(217, 119, 6, 0.15)',
+                border: '1.5px solid #FDE68A',
+                backgroundColor: '#FFFFFF',
                 mt: 1,
               },
             },
           }}
         >
-          <MenuItem disabled sx={{ opacity: '1 !important', py: 1 }}>
+          <MenuItem disabled sx={{ opacity: '1 !important', py: 1.2 }}>
             <ListItemIcon>
-              <AdminPanelSettingsRoundedIcon sx={{ fontSize: 18, color: '#0B4DB7' }} />
+              <AdminPanelSettingsRoundedIcon sx={{ fontSize: 20, color: '#B91C1C' }} />
             </ListItemIcon>
             <Box>
-              <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+              <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#1F1714' }}>
                 Administrator
               </Typography>
-              <Typography sx={{ fontSize: '11px', color: '#64748B' }}>
+              <Typography sx={{ fontSize: '11px', color: '#D97706', fontWeight: 600 }}>
                 Logged In
               </Typography>
             </Box>
           </MenuItem>
-          <Divider sx={{ my: 0.5 }} />
+          <Divider sx={{ my: 0.5, borderColor: '#FEF3C7' }} />
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              handleTabClick('Settings');
+            }}
+            sx={{ py: 1 }}
+          >
+            <ListItemIcon>
+              <SettingsRoundedIcon sx={{ fontSize: 18, color: '#B91C1C' }} />
+            </ListItemIcon>
+            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1714' }}>
+              Software Settings
+            </Typography>
+          </MenuItem>
           <MenuItem onClick={handleLogoutClick} sx={{ color: '#DC2626', py: 1 }}>
             <ListItemIcon>
               <LogoutRoundedIcon sx={{ fontSize: 18, color: '#DC2626' }} />
             </ListItemIcon>
-            <Typography sx={{ fontSize: '13px', fontWeight: 600 }}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 700 }}>
               Logout
             </Typography>
           </MenuItem>

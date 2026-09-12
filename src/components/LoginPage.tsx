@@ -74,7 +74,7 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'radial-gradient(ellipse at 50% 50%, #EEF9FA 0%, #DEF2F6 50%, #CFEAF1 100%)',
+        background: 'radial-gradient(ellipse at 50% 40%, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%)',
         p: 2.5,
         boxSizing: 'border-box',
       }}
@@ -87,41 +87,43 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
           width: '100%',
           maxWidth: '430px',
           backgroundColor: '#FFFFFF',
-          borderRadius: '16px',
+          borderRadius: '20px',
           p: { xs: 3.5, sm: '42px 38px 32px 38px' },
-          boxShadow: '0 20px 45px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04)',
-          border: '1px solid rgba(255, 255, 255, 0.9)',
+          boxShadow: '0 20px 50px -10px rgba(180, 83, 9, 0.16), 0 0 0 1.5px #FDE68A',
+          border: '1.5px solid #FCD34D',
           boxSizing: 'border-box',
           position: 'relative',
         }}
       >
-        {/* Top Shield Icon Badge */}
+        {/* Top Festive Shield Badge */}
         <Box
           sx={{
-            width: 52,
-            height: 52,
-            borderRadius: '14px',
-            backgroundColor: '#EEF2FF',
+            width: 56,
+            height: 56,
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+            border: '2px solid #F59E0B',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             mx: 'auto',
             mb: 2.2,
+            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)',
           }}
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path
               d="M12 2L4 5.5V11.5C4 16.6 7.4 21.3 12 22.5C16.6 21.3 20 16.6 20 11.5V5.5L12 2Z"
-              stroke="#0B4DB7"
+              stroke="#FEF08A"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              fill="#E0E7FF"
+              fill="rgba(254, 240, 138, 0.2)"
             />
-            <circle cx="12" cy="10" r="2.2" stroke="#0B4DB7" strokeWidth="1.8" />
+            <circle cx="12" cy="10" r="2.2" stroke="#FEF08A" strokeWidth="1.8" />
             <path
               d="M8.5 16C8.5 14.35 10.07 13 12 13C13.93 13 15.5 14.35 15.5 16"
-              stroke="#0B4DB7"
+              stroke="#FEF08A"
               strokeWidth="1.8"
               strokeLinecap="round"
             />
@@ -132,13 +134,13 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <Typography
           variant="h1"
           sx={{
-            fontSize: '22px',
+            fontSize: '24px',
             fontWeight: 800,
-            color: '#0F172A',
+            color: '#B91C1C',
             textAlign: 'center',
             letterSpacing: '-0.02em',
             lineHeight: 1.2,
-            mb: 0.8,
+            mb: 0.5,
           }}
         >
           Admin Login
@@ -148,14 +150,14 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <Typography
           sx={{
             fontSize: '13.5px',
-            fontWeight: 500,
-            color: '#64748B',
+            fontWeight: 600,
+            color: '#B45309',
             textAlign: 'center',
             letterSpacing: '-0.01em',
             mb: 3.5,
           }}
         >
-          Secure access for system administrators
+          Dheeksha Trade Billing & Management
         </Typography>
 
         {/* Error Alert if any */}
@@ -173,8 +175,8 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
             sx={{
               display: 'block',
               fontSize: '13px',
-              fontWeight: 600,
-              color: '#334155',
+              fontWeight: 700,
+              color: '#451A03',
               mb: 0.8,
               letterSpacing: '-0.01em',
             }}
@@ -185,20 +187,20 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: '8px',
+              backgroundColor: '#FFFDF9',
+              border: '1.5px solid #FDE68A',
+              borderRadius: '9px',
               px: 1.6,
               height: '46px',
               boxSizing: 'border-box',
               transition: 'all 0.2s ease',
               '&:hover': {
-                borderColor: '#CBD5E1',
+                borderColor: '#F59E0B',
               },
               '&:focus-within': {
-                borderColor: '#0B4DB7',
+                borderColor: '#DC2626',
                 backgroundColor: '#FFFFFF',
-                boxShadow: '0 0 0 2px rgba(11, 77, 183, 0.12)',
+                boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
               },
             }}
           >
@@ -211,12 +213,12 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
               autoComplete="username"
               sx={{
                 fontSize: '14px',
-                fontWeight: 500,
-                color: '#0F172A',
+                fontWeight: 600,
+                color: '#1F1714',
                 '& input': {
                   p: 0,
                   '&::placeholder': {
-                    color: '#94A3B8',
+                    color: '#A8998A',
                     opacity: 1,
                   },
                 },
@@ -233,8 +235,8 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
             sx={{
               display: 'block',
               fontSize: '13px',
-              fontWeight: 600,
-              color: '#334155',
+              fontWeight: 700,
+              color: '#451A03',
               mb: 0.8,
               letterSpacing: '-0.01em',
             }}
@@ -245,28 +247,28 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
             sx={{
               display: 'flex',
               alignItems: 'center',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              borderRadius: '8px',
+              backgroundColor: '#FFFDF9',
+              border: '1.5px solid #FDE68A',
+              borderRadius: '9px',
               px: 1.6,
               height: '46px',
               gap: 1.2,
               boxSizing: 'border-box',
               transition: 'all 0.2s ease',
               '&:hover': {
-                borderColor: '#CBD5E1',
+                borderColor: '#F59E0B',
               },
               '&:focus-within': {
-                borderColor: '#0B4DB7',
+                borderColor: '#DC2626',
                 backgroundColor: '#FFFFFF',
-                boxShadow: '0 0 0 2px rgba(11, 77, 183, 0.12)',
+                boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
               },
             }}
           >
             {/* Lock Prefix Icon */}
             <LockOutlinedIcon
               sx={{
-                color: '#94A3B8',
+                color: '#D97706',
                 fontSize: 18,
                 flexShrink: 0,
               }}
@@ -283,13 +285,13 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
               autoComplete="current-password"
               sx={{
                 fontSize: '14px',
-                fontWeight: 500,
-                color: '#0F172A',
+                fontWeight: 600,
+                color: '#1F1714',
                 '& input': {
                   p: 0,
                   letterSpacing: showPassword ? 'normal' : '0.15em',
                   '&::placeholder': {
-                    color: '#94A3B8',
+                    color: '#A8998A',
                     opacity: 1,
                     letterSpacing: 'normal',
                   },
@@ -303,10 +305,10 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
               onClick={() => setShowPassword(!showPassword)}
               tabIndex={-1}
               sx={{
-                color: '#94A3B8',
+                color: '#D97706',
                 p: 0.5,
                 '&:hover': {
-                  color: '#475569',
+                  color: '#B45309',
                 },
               }}
             >
@@ -328,21 +330,24 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
           disabled={loading}
           endIcon={!loading && <ArrowForwardRoundedIcon sx={{ fontSize: '18px !important' }} />}
           sx={{
-            backgroundColor: '#003EB0',
+            background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
             color: '#FFFFFF',
-            height: '46px',
-            borderRadius: '8px',
-            fontSize: '14.5px',
-            fontWeight: 700,
+            height: '48px',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: 800,
             textTransform: 'none',
-            letterSpacing: '-0.01em',
-            boxShadow: '0 2px 4px rgba(0, 62, 176, 0.2)',
-            transition: 'background-color 0.15s ease',
+            letterSpacing: '0.01em',
+            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+            transition: 'all 0.2s ease',
+            border: '1px solid #F59E0B',
             '&:hover': {
-              backgroundColor: '#003399',
+              background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
+              boxShadow: '0 6px 16px rgba(220, 38, 38, 0.4)',
+              transform: 'translateY(-1px)',
             },
             '&.Mui-disabled': {
-              backgroundColor: '#93C5FD',
+              backgroundColor: '#FCA5A5',
               color: '#FFFFFF',
             },
           }}
@@ -350,17 +355,17 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
           {loading ? <CircularProgress size={22} sx={{ color: '#FFFFFF' }} /> : 'Login'}
         </Button>
 
-        {/* Bottom subtle divider line as in Figma */}
+        {/* Bottom footer note */}
         <Box
           sx={{
             mt: 3.5,
-            borderTop: '1px solid #F1F5F9',
+            borderTop: '1px solid #FEF3C7',
             pt: 1.5,
             textAlign: 'center',
           }}
         >
-          <Typography sx={{ fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>
-            Dheeksha Trade Billing & Management System
+          <Typography sx={{ fontSize: '12px', color: '#B45309', fontWeight: 600 }}>
+            Siva Balaji Crackers & Sri Dhanalakshmi
           </Typography>
         </Box>
       </Paper>

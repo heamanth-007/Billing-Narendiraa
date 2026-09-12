@@ -13,6 +13,8 @@ import { errorHandler } from './middleware/errorHandler';
 import customerRoutes from './routes/customerRoutes';
 import companyRoutes from './routes/companyRoutes';
 import productRoutes from './routes/productRoutes';
+import categoryRoutes from './routes/categoryRoutes';
+import priceListRoutes from './routes/priceListRoutes';
 import particularRoutes from './routes/particularRoutes';
 import accountRoutes from './routes/accountRoutes';
 import authRoutes from './routes/authRoutes';
@@ -104,6 +106,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/pricelists', priceListRoutes);
 app.use('/api/particulars', particularRoutes);
 app.use('/api/accounts', accountRoutes);
 

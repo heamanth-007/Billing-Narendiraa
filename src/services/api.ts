@@ -106,6 +106,34 @@ export const ProductsApi = {
   delete: (id: string) => request<any>(`/products/${id}`, { method: 'DELETE' }),
 };
 
+// Categories API
+export const CategoriesApi = {
+  getAll: () => request<any[]>('/categories'),
+  getById: (id: string) => request<any>(`/categories/${id}`),
+  create: (data: any) => request<any>('/categories', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any) => request<any>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => request<any>(`/categories/${id}`, { method: 'DELETE' }),
+  clearAll: () => request<any>('/categories/clear/all', { method: 'DELETE' }),
+};
+
+// Price Lists API
+export const PriceListsApi = {
+  getAll: (params?: { category?: string; search?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.category && params.category !== 'ALL') query.append('category', params.category);
+    if (params?.search) query.append('search', params.search);
+    const queryString = query.toString();
+    return request<any[]>(`/pricelists${queryString ? `?${queryString}` : ''}`);
+  },
+  create: (data: any) => request<any>('/pricelists', { method: 'POST', body: JSON.stringify(data) }),
+  bulkImport: (data: { items: any[]; batchName?: string; replaceExisting?: boolean }) =>
+    request<any>('/pricelists/bulk', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any) => request<any>(`/pricelists/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => request<any>(`/pricelists/${id}`, { method: 'DELETE' }),
+  deleteBatch: (batchName: string) => request<any>(`/pricelists/batch/${encodeURIComponent(batchName)}`, { method: 'DELETE' }),
+  clearAll: () => request<any>('/pricelists/clear/all', { method: 'DELETE' }),
+};
+
 // Particulars API
 export const ParticularsApi = {
   getAll: (customerName?: string) =>
