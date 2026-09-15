@@ -200,7 +200,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
       date: bill.date || '',
       customerName: bill.customerName || '',
       companyName:
-        (bill.companyName && bill.companyName !== 'Dheeksha Trade' && bill.companyName !== 'Dheeksha Trade Link')
+        bill.companyName && bill.companyName.trim() !== '' && bill.companyName !== 'General'
           ? bill.companyName
           : storeSettings.companyName || 'General',
       transport: String(bill.transport || '0'),
@@ -865,8 +865,8 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
         </Box>
 
         {/* Recent Bills Table */}
-        <TableContainer sx={{ maxHeight: '420px' }}>
-          <Table stickyHeader sx={{ width: '100%' }} aria-label="recent bills table">
+        <TableContainer sx={{ maxHeight: '420px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Table stickyHeader sx={{ minWidth: { xs: '650px', sm: '100%' } }} aria-label="recent bills table">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                 <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '110px' }}>

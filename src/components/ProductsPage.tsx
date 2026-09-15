@@ -471,8 +471,8 @@ export const ProductsPage: FC = () => {
         </Box>
 
         {/* Table Container */}
-        <TableContainer sx={{ height: 'calc(100vh - 185px)', maxHeight: 'calc(100vh - 185px)' }}>
-          <Table stickyHeader sx={{ width: '100%' }} aria-label="product table">
+        <TableContainer sx={{ height: { xs: 'auto', md: 'calc(100vh - 185px)' }, maxHeight: { xs: '550px', md: 'calc(100vh - 185px)' }, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Table stickyHeader sx={{ minWidth: { xs: '650px', sm: '100%' } }} aria-label="product table">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                 <TableCell

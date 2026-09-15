@@ -129,11 +129,10 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
 
   const displayCompanyName =
     bill.companyName &&
-    bill.companyName !== 'Dheeksha Trade' &&
-    bill.companyName !== 'Dheeksha Trade Link' &&
-    bill.companyName.trim() !== ''
+    bill.companyName.trim() !== '' &&
+    bill.companyName !== 'General'
       ? bill.companyName
-      : storeSettings.companyName || 'Dheeksha Trade Link';
+      : storeSettings.companyName || 'General';
 
   const isTaxActive = Boolean(storeSettings.enableTax) || (parseFloat(String(bill.tax || '0').replace(/[^0-9.]/g, '')) > 0);
   const cityLine = `${storeSettings.city || 'Sivakasi'}${storeSettings.state ? `, ${storeSettings.state}` : ''}`;

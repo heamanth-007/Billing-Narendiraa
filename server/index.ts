@@ -18,6 +18,7 @@ import priceListRoutes from './routes/priceListRoutes';
 import particularRoutes from './routes/particularRoutes';
 import accountRoutes from './routes/accountRoutes';
 import authRoutes from './routes/authRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 import { seedDefaultAdmin } from './controllers/authController';
 
 const app: Application = express();
@@ -110,6 +111,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/pricelists', priceListRoutes);
 app.use('/api/particulars', particularRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

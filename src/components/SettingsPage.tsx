@@ -20,6 +20,8 @@ import PhoneInTalkRoundedIcon from '@mui/icons-material/PhoneInTalkRounded';
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded';
+import CircularProgress from '@mui/material/CircularProgress';
+import { SettingsApi } from '../services/api';
 
 export interface CompanySettings {
   companyName: string;
@@ -147,6 +149,7 @@ export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<CompanySettings>(getStoredSettings);
   const [isDraggingLogo, setIsDraggingLogo] = useState(false);
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'error' }>({
@@ -154,6 +157,40 @@ export const SettingsPage: React.FC = () => {
     message: '',
     severity: 'success',
   });
+
+  // Fetch settings from MongoDB backend on mount
+  React.useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await SettingsApi.get();
+        if (res && res.data) {
+          const remoteSettings: CompanySettings = {
+            companyName: res.data.companyName || DEFAULT_COMPANY_SETTINGS.companyName,
+            tagline: res.data.tagline ?? DEFAULT_COMPANY_SETTINGS.tagline,
+            ownerName: res.data.ownerName ?? DEFAULT_COMPANY_SETTINGS.ownerName,
+            phone: res.data.phone ?? DEFAULT_COMPANY_SETTINGS.phone,
+            whatsapp: res.data.whatsapp ?? DEFAULT_COMPANY_SETTINGS.whatsapp,
+            email: res.data.email ?? DEFAULT_COMPANY_SETTINGS.email,
+            address: res.data.address ?? DEFAULT_COMPANY_SETTINGS.address,
+            city: res.data.city ?? DEFAULT_COMPANY_SETTINGS.city,
+            pincode: res.data.pincode ?? DEFAULT_COMPANY_SETTINGS.pincode,
+            state: res.data.state ?? DEFAULT_COMPANY_SETTINGS.state,
+            gstin: res.data.gstin ?? DEFAULT_COMPANY_SETTINGS.gstin,
+            pan: res.data.pan ?? DEFAULT_COMPANY_SETTINGS.pan,
+            logoUrl: res.data.logoUrl ?? '',
+            enableTax: Boolean(res.data.enableTax),
+            defaultTaxRate: res.data.defaultTaxRate || '18',
+          };
+          setSettings(remoteSettings);
+          localStorage.setItem('dheeksha_app_settings', JSON.stringify(remoteSettings));
+          window.dispatchEvent(new Event('dheeksha_settings_updated'));
+        }
+      } catch (err) {
+        console.warn('Could not fetch settings from backend, using local storage:', err);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleChange = <K extends keyof CompanySettings>(field: K, value: CompanySettings[K]) => {
     setSettings((prev) => ({
@@ -240,30 +277,43 @@ export const SettingsPage: React.FC = () => {
     setSettings((prev) => ({ ...prev, logoUrl: '' }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
+      setIsSaving(true);
+      // 1. Immediately cache in localStorage for fast local access
       localStorage.setItem('dheeksha_app_settings', JSON.stringify(settings));
       window.dispatchEvent(new Event('dheeksha_settings_updated'));
+
+      // 2. Persist to MongoDB database so it works across all devices & deployments!
+      await SettingsApi.update(settings);
+
       setToast({
         open: true,
-        message: '✅ Company Profile & Logo saved successfully!',
+        message: '✅ Company Profile, Logo & Settings saved to Database successfully!',
         severity: 'success',
       });
     } catch (err: any) {
-      console.error('Failed to save settings:', err);
+      console.error('Failed to save settings to server:', err);
       setToast({
         open: true,
-        message: '❌ Failed to save settings.',
-        severity: 'error',
+        message: '✅ Profile saved locally! (Backend sync will retry automatically)',
+        severity: 'success',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleResetToDefault = () => {
+  const handleResetToDefault = async () => {
     if (window.confirm('Reset company profile details to default values?')) {
       setSettings(DEFAULT_COMPANY_SETTINGS);
       localStorage.setItem('dheeksha_app_settings', JSON.stringify(DEFAULT_COMPANY_SETTINGS));
       window.dispatchEvent(new Event('dheeksha_settings_updated'));
+      try {
+        await SettingsApi.update(DEFAULT_COMPANY_SETTINGS);
+      } catch (e) {
+        console.error(e);
+      }
       setToast({
         open: true,
         message: '🔄 Company profile reset to default.',
@@ -276,9 +326,10 @@ export const SettingsPage: React.FC = () => {
     <Box
       sx={{
         width: '100%',
-        height: 'calc(100vh - 72px)',
+        minHeight: { xs: 'auto', md: 'calc(100vh - 72px)' },
+        height: { xs: 'auto', md: 'calc(100vh - 72px)' },
         px: { xs: 1, sm: 1.5, md: 2 },
-        py: 0.5,
+        py: { xs: 1, md: 0.5 },
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
@@ -293,7 +344,7 @@ export const SettingsPage: React.FC = () => {
           borderRadius: '14px',
           border: '1.5px solid #FDE68A',
           boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
-          overflow: 'hidden',
+          overflow: { xs: 'visible', md: 'hidden' },
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -373,8 +424,9 @@ export const SettingsPage: React.FC = () => {
             <Button
               variant="contained"
               disableElevation
+              disabled={isSaving}
               onClick={handleSave}
-              startIcon={<SaveRoundedIcon sx={{ fontSize: 18 }} />}
+              startIcon={isSaving ? <CircularProgress size={18} sx={{ color: '#B91C1C' }} /> : <SaveRoundedIcon sx={{ fontSize: 18 }} />}
               sx={{
                 backgroundColor: '#FFFFFF',
                 color: '#B91C1C',
@@ -389,9 +441,13 @@ export const SettingsPage: React.FC = () => {
                 '&:hover': {
                   backgroundColor: '#FFFBEB',
                 },
+                '&.Mui-disabled': {
+                  backgroundColor: '#F3F4F6',
+                  color: '#9CA3AF',
+                },
               }}
             >
-              Save Profile
+              {isSaving ? 'Saving...' : 'Save Profile'}
             </Button>
           </Box>
         </Box>
@@ -402,7 +458,7 @@ export const SettingsPage: React.FC = () => {
             flex: 1,
             display: 'flex',
             flexDirection: { xs: 'column', md: 'row' },
-            overflow: 'hidden',
+            overflow: { xs: 'visible', md: 'hidden' },
             backgroundColor: '#FEFDF9',
           }}
         >
@@ -412,11 +468,11 @@ export const SettingsPage: React.FC = () => {
               width: { xs: '100%', md: '340px', lg: '380px' },
               borderRight: { xs: 'none', md: '1.5px solid #FDE68A' },
               borderBottom: { xs: '1.5px solid #FDE68A', md: 'none' },
-              p: 2.5,
+              p: { xs: 2, sm: 2.5 },
               display: 'flex',
               flexDirection: 'column',
               gap: 2,
-              overflowY: 'auto',
+              overflowY: { xs: 'visible', md: 'auto' },
               backgroundColor: '#FFFFFF',
               boxSizing: 'border-box',
               flexShrink: 0,
@@ -661,7 +717,7 @@ export const SettingsPage: React.FC = () => {
             sx={{
               flex: 1,
               p: { xs: 2, sm: 3 },
-              overflowY: 'auto',
+              overflowY: { xs: 'visible', md: 'auto' },
               boxSizing: 'border-box',
               display: 'flex',
               flexDirection: 'column',

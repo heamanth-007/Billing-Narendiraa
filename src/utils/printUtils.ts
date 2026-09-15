@@ -124,11 +124,10 @@ export const generateBillHtml = (bill: BillPrintData): string => {
   const storeSettings = getStoredSettings();
   const displayCompanyName =
     bill.companyName &&
-    bill.companyName !== 'Dheeksha Trade' &&
-    bill.companyName !== 'Dheeksha Trade Link' &&
-    bill.companyName.trim() !== ''
+    bill.companyName.trim() !== '' &&
+    bill.companyName !== 'General'
       ? bill.companyName
-      : storeSettings.companyName || 'Dheeksha Trade Link';
+      : storeSettings.companyName || 'General';
 
   const isTaxActive = Boolean(storeSettings.enableTax) || (parseFloat(String(bill.tax || '0').replace(/[^0-9.]/g, '')) > 0);
   const receiptSrc = bill.pdfData || bill.pdfUrl || '';

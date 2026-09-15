@@ -9,7 +9,8 @@ import { ProductsPage } from './components/ProductsPage';
 import { AllCustomersPage } from './components/AllCustomersPage';
 import { AddCustomerPage } from './components/AddCustomerPage';
 import { ParticularsPage } from './components/ParticularsPage';
-import { SettingsPage, getStoredSettings } from './components/SettingsPage';
+import { SettingsPage, getStoredSettings, DEFAULT_COMPANY_SETTINGS } from './components/SettingsPage';
+import { SettingsApi } from './services/api';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -29,6 +30,21 @@ function App() {
       }
     };
     updateTitle();
+
+    // Fetch settings from MongoDB database so brand identity is always live across all devices
+    SettingsApi.get()
+      .then((res) => {
+        if (res && res.data) {
+          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...res.data };
+          localStorage.setItem('dheeksha_app_settings', JSON.stringify(remoteSettings));
+          window.dispatchEvent(new Event('dheeksha_settings_updated'));
+          updateTitle();
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not connect to settings API on startup:', err);
+      });
+
     window.addEventListener('dheeksha_settings_updated', updateTitle);
     return () => {
       window.removeEventListener('dheeksha_settings_updated', updateTitle);

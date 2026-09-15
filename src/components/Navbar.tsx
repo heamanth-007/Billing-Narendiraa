@@ -1,9 +1,29 @@
 import { useState, useEffect, type FC, type MouseEvent } from 'react';
-import { Box, Typography, Menu, MenuItem, ListItemIcon, Divider } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Divider,
+  IconButton,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+} from '@mui/material';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded';
+import FormatListNumberedRoundedIcon from '@mui/icons-material/FormatListNumberedRounded';
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded';
 import { getStoredSettings, type CompanySettings } from './SettingsPage';
 
 export type NavTab = 'All Customers' | 'Billing' | 'Categories' | 'Price List' | 'Product' | 'Settings';
@@ -14,6 +34,15 @@ interface NavbarProps {
   onLogout?: () => void;
 }
 
+const TAB_ICONS: Record<NavTab, React.ReactElement> = {
+  'All Customers': <PeopleAltRoundedIcon sx={{ fontSize: 20 }} />,
+  'Billing': <ReceiptLongRoundedIcon sx={{ fontSize: 20 }} />,
+  'Categories': <CategoryRoundedIcon sx={{ fontSize: 20 }} />,
+  'Price List': <FormatListNumberedRoundedIcon sx={{ fontSize: 20 }} />,
+  'Product': <Inventory2RoundedIcon sx={{ fontSize: 20 }} />,
+  'Settings': <SettingsRoundedIcon sx={{ fontSize: 20 }} />,
+};
+
 export const Navbar: FC<NavbarProps> = ({
   activeTab = 'All Customers',
   onSelectTab,
@@ -21,6 +50,7 @@ export const Navbar: FC<NavbarProps> = ({
 }) => {
   const tabs: NavTab[] = ['All Customers', 'Billing', 'Categories', 'Price List', 'Product', 'Settings'];
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [companySettings, setCompanySettings] = useState<CompanySettings>(getStoredSettings);
 
   useEffect(() => {
@@ -37,6 +67,7 @@ export const Navbar: FC<NavbarProps> = ({
     if (onSelectTab) {
       onSelectTab(tab);
     }
+    setMobileDrawerOpen(false);
   };
 
   const handleProfileClick = (event: MouseEvent<HTMLElement>) => {
@@ -49,197 +80,231 @@ export const Navbar: FC<NavbarProps> = ({
 
   const handleLogoutClick = () => {
     handleCloseMenu();
+    setMobileDrawerOpen(false);
     if (onLogout) onLogout();
   };
 
   return (
-    <Box
-      component="header"
-      sx={{
-        width: '100%',
-        backgroundColor: '#FFFFFF',
-        borderBottom: '2px solid #FDE68A',
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFDF7 100%)',
-        px: { xs: 2, md: 4 },
-        height: '66px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1100,
-        boxSizing: 'border-box',
-        boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
-      }}
-    >
-      {/* Left Logo Section with Festive Balaji Crackers Gold & Crimson Styling */}
+    <>
       <Box
-        onClick={() => handleTabClick('All Customers')}
-        sx={{ display: 'flex', alignItems: 'center', gap: 0.8, cursor: 'pointer' }}
+        component="header"
+        sx={{
+          width: '100%',
+          backgroundColor: '#FFFFFF',
+          borderBottom: '2px solid #FDE68A',
+          background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFDF7 100%)',
+          px: { xs: 1.5, sm: 2.5, md: 4 },
+          height: { xs: '58px', sm: '66px' },
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1100,
+          boxSizing: 'border-box',
+          boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
+        }}
       >
-        {/* Stylized Logo Badge / Uploaded Logo */}
-        {companySettings.logoUrl ? (
+        {/* Left Logo Section */}
+        <Box
+          onClick={() => handleTabClick('All Customers')}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            cursor: 'pointer',
+            minWidth: 0,
+            maxWidth: { xs: '65%', sm: 'auto' },
+          }}
+        >
+          {/* Logo */}
+          {companySettings.logoUrl ? (
+            <Box
+              component="img"
+              src={companySettings.logoUrl}
+              alt="Company Logo"
+              sx={{
+                height: { xs: 30, sm: 36 },
+                maxWidth: { xs: 40, sm: 48 },
+                width: 'auto',
+                objectFit: 'contain',
+                backgroundColor: 'transparent',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.12))',
+                display: 'block',
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: { xs: 32, sm: 36 },
+                height: { xs: 32, sm: 36 },
+                borderRadius: '8px',
+                border: '1.5px solid #F59E0B',
+                background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M7 6H13C16.3137 6 19 8.68629 19 12C19 15.3137 16.3137 18 13 18H7V6Z"
+                  stroke="#FEF08A"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 9.5H13C14.3807 9.5 15.5 10.6193 15.5 12C15.5 13.3807 14.3807 14.5 13 14.5H10V9.5Z"
+                  fill="#FEF08A"
+                />
+              </svg>
+            </Box>
+          )}
+
+          <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 800,
+                fontSize: { xs: '14.5px', sm: '17px' },
+                color: '#B91C1C',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.15,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {companySettings.companyName || 'Dheeksha Trade Link'}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: { xs: '9px', sm: '10.5px' },
+                fontWeight: 700,
+                color: '#D97706',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {companySettings.tagline ? companySettings.tagline : `${companySettings.city || 'Sivakasi'} Fireworks & Trade`}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Center Desktop Navigation Links (Hidden on Mobile/Tablet) */}
+        <Box
+          component="nav"
+          sx={{
+            display: { xs: 'none', md: 'flex' },
+            alignItems: 'center',
+            gap: { md: 2.5, lg: 3.5 },
+            height: '100%',
+          }}
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <Box
+                key={tab}
+                onClick={() => handleTabClick(tab)}
+                sx={{
+                  position: 'relative',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  px: 0.5,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontWeight: isActive ? 800 : 600,
+                    fontSize: '14px',
+                    color: isActive ? '#B91C1C' : '#57463A',
+                    letterSpacing: '-0.01em',
+                    transition: 'all 0.15s ease',
+                    '&:hover': {
+                      color: '#B91C1C',
+                    },
+                  }}
+                >
+                  {tab}
+                </Typography>
+
+                {/* Active indicator underline bar */}
+                {isActive && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: '3.5px',
+                      background: 'linear-gradient(90deg, #DC2626 0%, #F59E0B 100%)',
+                      borderTopLeftRadius: '3px',
+                      borderTopRightRadius: '3px',
+                      boxShadow: '0 -2px 6px rgba(220, 38, 38, 0.35)',
+                    }}
+                  />
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Right Action Section */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.8, sm: 1.5 } }}>
+          {/* Profile Avatar Button */}
           <Box
-            component="img"
-            src={companySettings.logoUrl}
-            alt="Company Logo"
+            onClick={handleProfileClick}
             sx={{
-              height: 36,
-              maxWidth: 48,
-              width: 'auto',
-              objectFit: 'contain',
-              backgroundColor: 'transparent',
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.12))',
-              display: 'block',
-              mr: 0.2,
-            }}
-          />
-        ) : (
-          <Box
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '9px',
-              border: '1.5px solid #F59E0B',
-              background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+              width: { xs: 32, sm: 36 },
+              height: { xs: 32, sm: 36 },
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%)',
+              border: '1.5px solid #FDE68A',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
-              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 6px rgba(30, 64, 175, 0.3)',
+              '&:hover': {
+                transform: 'scale(1.06)',
+              },
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M7 6H13C16.3137 6 19 8.68629 19 12C19 15.3137 16.3137 18 13 18H7V6Z"
-                stroke="#FEF08A"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M10 9.5H13C14.3807 9.5 15.5 10.6193 15.5 12C15.5 13.3807 14.3807 14.5 13 14.5H10V9.5Z"
-                fill="#FEF08A"
-              />
-            </svg>
+            <PersonOutlineRoundedIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: '#FFFFFF' }} />
           </Box>
-        )}
 
-        <Box>
-          <Typography
-            variant="h6"
+          {/* Mobile Hamburger Menu Button (Visible only on mobile/tablet) */}
+          <IconButton
+            onClick={() => setMobileDrawerOpen(true)}
             sx={{
-              fontWeight: 800,
-              fontSize: '17px',
+              display: { xs: 'flex', md: 'none' },
               color: '#B91C1C',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
+              backgroundColor: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              p: 0.8,
+              borderRadius: '8px',
+              '&:hover': {
+                backgroundColor: '#FEF3C7',
+              },
             }}
           >
-            {companySettings.companyName || 'Dheeksha Trade Link'}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '10.5px',
-              fontWeight: 700,
-              color: '#D97706',
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-            }}
-          >
-            {companySettings.tagline ? companySettings.tagline : `${companySettings.city || 'Sivakasi'} Fireworks & Trade`}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Center Navigation Links */}
-      <Box
-        component="nav"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: { xs: 2.5, md: 4 },
-          height: '100%',
-        }}
-      >
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <Box
-              key={tab}
-              onClick={() => handleTabClick(tab)}
-              sx={{
-                position: 'relative',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <Typography
-                sx={{
-                  fontWeight: isActive ? 700 : 500,
-                  fontSize: '14.5px',
-                  color: isActive ? '#B91C1C' : '#57463A',
-                  letterSpacing: '-0.01em',
-                  px: 0.5,
-                  transition: 'all 0.15s ease',
-                  '&:hover': {
-                    color: '#B91C1C',
-                  },
-                }}
-              >
-                {tab}
-              </Typography>
-
-              {/* Active indicator underline bar in Ruby Red with Gold glow */}
-              {isActive && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '3.5px',
-                    background: 'linear-gradient(90deg, #DC2626 0%, #F59E0B 100%)',
-                    borderTopLeftRadius: '3px',
-                    borderTopRightRadius: '3px',
-                    boxShadow: '0 -2px 6px rgba(220, 38, 38, 0.35)',
-                  }}
-                />
-              )}
-            </Box>
-          );
-        })}
-      </Box>
-
-      {/* Right Action Icons (Profile / Logout) */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box
-          onClick={handleProfileClick}
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%)',
-            border: '1.5px solid #FDE68A',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 2px 6px rgba(30, 64, 175, 0.3)',
-            '&:hover': {
-              transform: 'scale(1.06)',
-              boxShadow: '0 3px 10px rgba(30, 64, 175, 0.4)',
-            },
-          }}
-        >
-          <PersonOutlineRoundedIcon sx={{ fontSize: 20, color: '#FFFFFF' }} />
+            <MenuRoundedIcon sx={{ fontSize: 22 }} />
+          </IconButton>
         </Box>
 
-        {/* Profile / Logout Menu */}
+        {/* Profile / Logout Popup Menu */}
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
@@ -297,6 +362,164 @@ export const Navbar: FC<NavbarProps> = ({
           </MenuItem>
         </Menu>
       </Box>
-    </Box>
+
+      {/* Mobile Horizontal Touch Tab Bar (Quick thumb scrolling under Navbar on Mobile) */}
+      <Box
+        sx={{
+          display: { xs: 'flex', md: 'none' },
+          alignItems: 'center',
+          gap: 1,
+          px: 1.5,
+          py: 0.8,
+          backgroundColor: '#FFFFFF',
+          borderBottom: '1px solid #FDE68A',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': { display: 'none' },
+          position: 'sticky',
+          top: '58px',
+          zIndex: 1090,
+        }}
+      >
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <Box
+              key={tab}
+              onClick={() => handleTabClick(tab)}
+              sx={{
+                px: 1.4,
+                py: 0.6,
+                borderRadius: '20px',
+                backgroundColor: isActive ? '#DC2626' : '#FFFBEB',
+                color: isActive ? '#FFFFFF' : '#78350F',
+                border: isActive ? '1px solid #B91C1C' : '1px solid #FDE68A',
+                fontSize: '12px',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.6,
+                flexShrink: 0,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {TAB_ICONS[tab]}
+              {tab}
+            </Box>
+          );
+        })}
+      </Box>
+
+      {/* Mobile Slide-Out Drawer Menu */}
+      <Drawer
+        anchor="right"
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              width: '280px',
+              backgroundColor: '#FEFDF9',
+              borderLeft: '2px solid #FDE68A',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            },
+          },
+        }}
+      >
+        <Box>
+          {/* Drawer Header */}
+          <Box
+            sx={{
+              p: 2,
+              background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: '2px solid #F59E0B',
+            }}
+          >
+            <Box>
+              <Typography sx={{ fontSize: '15px', fontWeight: 800 }}>
+                {companySettings.companyName || 'Dheeksha Trade'}
+              </Typography>
+              <Typography sx={{ fontSize: '11px', color: '#FEF08A', fontWeight: 600 }}>
+                Main Navigation
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setMobileDrawerOpen(false)} sx={{ color: '#FFFFFF' }}>
+              <CloseRoundedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Box>
+
+          {/* Drawer Navigation List */}
+          <List sx={{ p: 1 }}>
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <ListItem key={tab} disablePadding sx={{ mb: 0.5 }}>
+                  <ListItemButton
+                    onClick={() => handleTabClick(tab)}
+                    sx={{
+                      borderRadius: '10px',
+                      backgroundColor: isActive ? '#FEF3C7' : 'transparent',
+                      border: isActive ? '1px solid #FDE68A' : '1px solid transparent',
+                      color: isActive ? '#B91C1C' : '#1F1714',
+                      py: 1.2,
+                      '&:hover': {
+                        backgroundColor: '#FFFBEB',
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: isActive ? '#B91C1C' : '#786C58', minWidth: '36px' }}>
+                      {TAB_ICONS[tab]}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Typography sx={{ fontSize: '14px', fontWeight: isActive ? 800 : 600 }}>
+                          {tab}
+                        </Typography>
+                      }
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Box>
+
+        {/* Drawer Bottom Logout Button */}
+        <Box sx={{ p: 2, borderTop: '1px solid #FDE68A' }}>
+          <ListItemButton
+            onClick={handleLogoutClick}
+            sx={{
+              borderRadius: '10px',
+              backgroundColor: '#FEF2F2',
+              border: '1px solid #FECACA',
+              color: '#DC2626',
+              py: 1,
+              '&:hover': {
+                backgroundColor: '#FEE2E2',
+              },
+            }}
+          >
+            <ListItemIcon sx={{ color: '#DC2626', minWidth: '36px' }}>
+              <LogoutRoundedIcon sx={{ fontSize: 20 }} />
+            </ListItemIcon>
+            <ListItemText
+              primary={
+                <Typography sx={{ fontSize: '14px', fontWeight: 700 }}>
+                  Logout
+                </Typography>
+              }
+            />
+          </ListItemButton>
+        </Box>
+      </Drawer>
+    </>
   );
 };

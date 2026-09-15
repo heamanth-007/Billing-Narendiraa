@@ -1872,8 +1872,8 @@ export const PriceListPage: FC = () => {
           </Box>
 
           {/* Price List Table */}
-          <TableContainer sx={{ maxHeight: 'calc(100vh - 380px)' }}>
-            <Table stickyHeader sx={{ width: '100%' }} aria-label="price list table">
+          <TableContainer sx={{ maxHeight: { xs: '500px', md: 'calc(100vh - 380px)' }, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Table stickyHeader sx={{ minWidth: { xs: '680px', sm: '100%' } }} aria-label="price list table">
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                   <TableCell

@@ -173,6 +173,16 @@ export const AuthApi = {
   getMe: () => request<any>('/auth/me'),
 };
 
+// Settings API
+export const SettingsApi = {
+  get: () => request<any>('/settings'),
+  update: (data: any) =>
+    request<any>('/settings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 // Health Check API
 export const HealthApi = {
   check: () => request<{ status: string; message: string; timestamp: string }>('/health'),

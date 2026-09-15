@@ -886,7 +886,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                 </Grid>
 
                 {/* Quantity */}
-                <Grid size={{ xs: 4, sm: 2 }}>
+                <Grid size={{ xs: 6, sm: 2 }}>
                   <TextField
                     fullWidth
                     size="small"
@@ -909,7 +909,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                 </Grid>
 
                 {/* Rate */}
-                <Grid size={{ xs: 4, sm: 2.5 }}>
+                <Grid size={{ xs: 6, sm: 2.5 }}>
                   <TextField
                     fullWidth
                     size="small"
@@ -932,7 +932,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                 </Grid>
 
                 {/* Add Item Button */}
-                <Grid size={{ xs: 4, sm: 2.5 }}>
+                <Grid size={{ xs: 12, sm: 2.5 }}>
                   <Button
                     fullWidth
                     variant="contained"
@@ -959,8 +959,8 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
             </Box>
 
             {/* Current Bill Items Table */}
-            <TableContainer sx={{ minHeight: '260px', maxHeight: '380px' }}>
-              <Table stickyHeader size="small" aria-label="bill items table">
+            <TableContainer sx={{ minHeight: '260px', maxHeight: '460px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <Table stickyHeader size="small" aria-label="bill items table" sx={{ minWidth: { xs: '540px', sm: '100%' } }}>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                     <TableCell sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '50px', backgroundColor: '#FFFBEB' }}>

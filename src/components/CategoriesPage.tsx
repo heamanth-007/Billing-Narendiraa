@@ -483,8 +483,8 @@ export const CategoriesPage: FC = () => {
         </Box>
 
         {/* Categories Table */}
-        <TableContainer>
-          <Table sx={{ width: '100%' }} aria-label="categories table">
+        <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Table sx={{ minWidth: { xs: '650px', sm: '100%' } }} aria-label="categories table">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                 <TableCell
