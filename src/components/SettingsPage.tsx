@@ -42,18 +42,18 @@ export interface CompanySettings {
 }
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
-  companyName: 'Dheeksha Trade Link',
-  tagline: 'Direct Sivakasi Fireworks Manufacturer & Wholesale Supplier',
-  ownerName: 'Siva',
-  phone: '+91 98765 43210',
-  whatsapp: '+91 98765 43210',
-  email: 'dheekshatradelink@gmail.com',
-  address: '124, Sivakasi Main Road, Near Bus Stand',
-  city: 'Sivakasi',
-  pincode: '626123',
-  state: 'Tamil Nadu',
-  gstin: '33AAAAA0000A1Z5',
-  pan: 'AAAAA0000A',
+  companyName: '',
+  tagline: '',
+  ownerName: '',
+  phone: '',
+  whatsapp: '',
+  email: '',
+  address: '',
+  city: '',
+  pincode: '',
+  state: '',
+  gstin: '',
+  pan: '',
   logoUrl: '',
   enableTax: false,
   defaultTaxRate: '18',
@@ -749,7 +749,7 @@ export const SettingsPage: React.FC = () => {
                     label="Company / Store Name *"
                     value={settings.companyName}
                     onChange={(e) => handleChange('companyName', e.target.value)}
-                    placeholder="e.g. Dheeksha Trade Link"
+                    placeholder="Enter your company / store name"
                   />
                 </Grid>
 
@@ -760,7 +760,7 @@ export const SettingsPage: React.FC = () => {
                     label="Tagline / Description"
                     value={settings.tagline}
                     onChange={(e) => handleChange('tagline', e.target.value)}
-                    placeholder="e.g. Sivakasi Fireworks Manufacturer & Wholesale"
+                    placeholder="e.g. Direct Manufacturer & Wholesale Supplier"
                   />
                 </Grid>
 
@@ -782,7 +782,7 @@ export const SettingsPage: React.FC = () => {
                     label="Email Address"
                     value={settings.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    placeholder="e.g. dheekshatradelink@gmail.com"
+                    placeholder="e.g. contact@example.com"
                   />
                 </Grid>
               </Grid>

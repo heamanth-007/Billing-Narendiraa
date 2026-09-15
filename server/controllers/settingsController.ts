@@ -3,7 +3,6 @@ import { Settings } from '../models/Settings';
 
 /**
  * Get the current company settings from MongoDB database.
- * If no settings record exists yet, creates one with defaults.
  */
 export const getSettings = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -23,14 +22,11 @@ export const getSettings = async (_req: Request, res: Response, next: NextFuncti
 export const updateSettings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const updateData = req.body;
-    let settings = await Settings.findOne();
-
-    if (!settings) {
-      settings = await Settings.create(updateData);
-    } else {
-      Object.assign(settings, updateData);
-      await settings.save();
-    }
+    const settings = await Settings.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      { new: true, upsert: true }
+    );
 
     res.status(200).json({
       success: true,
