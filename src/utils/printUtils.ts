@@ -65,30 +65,37 @@ export const generateBillHtml = (bill: BillPrintData): string => {
   const cleanDisc = rawDiscStr.replace(/[^0-9.]/g, '');
   const discNum = parseFloat(cleanDisc) || 0;
   let discountAmt = 0;
-  let discountLabel = 'Discount Amount';
+  let discountLabel = 'Discount';
   if (discNum > 0) {
-    if (rawDiscStr.includes('%') || discNum <= 100) {
+    if (rawDiscStr.includes('%') || (discNum <= 100 && !rawDiscStr.startsWith('₹'))) {
       discountAmt = (subtotal * discNum) / 100;
-      discountLabel = `Discount Amount (${bill.discount || discNum}${rawDiscStr.includes('%') ? '' : '%'})`;
+      discountLabel = `Discount (${discNum}%)`;
     } else {
       discountAmt = discNum;
-      discountLabel = `Discount Amount (₹${discNum})`;
+      discountLabel = `Discount (₹${discNum.toFixed(2)})`;
     }
   }
 
-  // Packing calculation
+  // Transport calculation
+  const rawTransportStr = String(bill.transport ?? '').trim();
+  const cleanTrans = rawTransportStr.replace(/[^0-9.]/g, '');
+  const transNum = parseFloat(cleanTrans) || 0;
+  const transportAmt = (!isNaN(Number(rawTransportStr)) && transNum > 0) ? transNum : 0;
+  const transportDisplayName = (!rawTransportStr || rawTransportStr === '0' || rawTransportStr === '-') ? '-' : rawTransportStr;
+
+  // Packing calculation - amount by default, only percentage if explicitly formatted with %
   const rawPackStr = String(bill.packing ?? '').trim();
   const cleanPack = rawPackStr.replace(/[^0-9.]/g, '');
   const packNum = parseFloat(cleanPack) || 0;
   let packingAmt = 0;
-  let packingLabel = 'Packing Amount';
+  let packingLabel = 'Packing Charges';
   if (packNum > 0) {
-    if (rawPackStr.includes('%') || packNum <= 100) {
+    if (rawPackStr.includes('%')) {
       packingAmt = (subtotal * packNum) / 100;
-      packingLabel = `Packing Amount (${bill.packing || packNum}${rawPackStr.includes('%') ? '' : '%'})`;
+      packingLabel = `Packing Charges (${packNum}%)`;
     } else {
       packingAmt = packNum;
-      packingLabel = `Packing Amount (₹${packNum})`;
+      packingLabel = `Packing Charges`;
     }
   }
 
@@ -97,23 +104,18 @@ export const generateBillHtml = (bill: BillPrintData): string => {
   const cleanTax = rawTaxStr.replace(/[^0-9.]/g, '');
   const taxNum = parseFloat(cleanTax) || 0;
   let taxAmt = 0;
-  let taxLabel = 'Tax Amount';
+  let taxLabel = 'GST / Tax';
   if (taxNum > 0) {
-    const baseForTax = Math.max(0, subtotal - discountAmt + packingAmt);
-    if (rawTaxStr.includes('%') || taxNum <= 100) {
-      taxAmt = (baseForTax * taxNum) / 100;
-      taxLabel = `Tax Amount (${bill.tax || taxNum}${rawTaxStr.includes('%') ? '' : '%'})`;
-    } else {
-      taxAmt = taxNum;
-      taxLabel = `Tax Amount (₹${taxNum})`;
-    }
+    const baseForTax = Math.max(0, subtotal - discountAmt + transportAmt + packingAmt);
+    taxAmt = (baseForTax * taxNum) / 100;
+    taxLabel = `GST / Tax (${taxNum}%)`;
   }
 
   // Grand Total calculation
-  const calculatedTotal = Math.max(0, subtotal - discountAmt + packingAmt + taxAmt);
+  const calculatedTotal = Math.max(0, subtotal - discountAmt + transportAmt + packingAmt + taxAmt);
   const rawTotalNum = parseFloat(String(bill.total ?? bill.amount ?? '0').replace(/,/g, '')) || 0;
   const finalTotalNum = rawTotalNum > 0 ? rawTotalNum : calculatedTotal;
-  const formattedTotal = finalTotalNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formattedTotal = '₹' + finalTotalNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const computedCases = bill.caseCount !== undefined && bill.caseCount !== ''
     ? bill.caseCount
@@ -128,24 +130,24 @@ export const generateBillHtml = (bill: BillPrintData): string => {
       ? bill.companyName
       : storeSettings.companyName || 'Dheeksha Trade Link';
 
-  const preparedBy = bill.preparedBy || storeSettings.ownerName || 'Admin';
-  const transportName = bill.transport && bill.transport.trim() !== '' && bill.transport !== '-' ? bill.transport.trim() : '-';
+  const isTaxActive = Boolean(storeSettings.enableTax) || (parseFloat(String(bill.tax || '0').replace(/[^0-9.]/g, '')) > 0);
   const receiptSrc = bill.pdfData || bill.pdfUrl || '';
   const cityLine = `${storeSettings.city || 'Sivakasi'}${storeSettings.state ? `, ${storeSettings.state}` : ''}`;
-  const gstinLine = storeSettings.gstin ? `GSTIN: ${storeSettings.gstin}` : '';
+  const gstinLine = (isTaxActive && storeSettings.gstin) ? `GSTIN: ${storeSettings.gstin}` : '';
   const phoneLine = storeSettings.phone ? `Mobile: ${storeSettings.phone}` : '';
   const metaContact = [gstinLine, phoneLine].filter(Boolean).join(' | ');
 
   const productRowsHtml = (bill.products || []).map((item, idx) => {
     const numAmt = parseFloat(String(item.amount).replace(/,/g, '')) || 0;
+    const numRate = parseFloat(String(item.rate).replace(/,/g, '')) || 0;
     return `
       <tr>
-        <td style="border: 1px solid #000; padding: 6px 8px; text-align: left;">${idx + 1}</td>
-        <td style="border: 1px solid #000; padding: 6px 8px; text-align: left; font-weight: 600;">${item.particular || '-'}</td>
-        <td style="border: 1px solid #000; padding: 6px 8px; text-align: left;">${item.quantity || '-'}</td>
-        <td style="border: 1px solid #000; padding: 6px 8px; text-align: left;">${item.rate || '-'}</td>
-        <td style="border: 1px solid #000; padding: 6px 8px; text-align: left;">${item.pktUnit && item.pktUnit !== '-' ? item.pktUnit : ''}</td>
-        <td style="border: 1px solid #000; padding: 6px 8px; text-align: right; font-weight: 600;">${numAmt.toFixed(2)}</td>
+        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: center;">${idx + 1}</td>
+        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: left; font-weight: 600;">${item.particular || '-'}</td>
+        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: center;">${item.quantity || '-'}</td>
+        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: right;">${numRate > 0 ? numRate.toFixed(2) : (item.rate || '-')}</td>
+        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: center;">${item.pktUnit && item.pktUnit !== '-' ? item.pktUnit : ''}</td>
+        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: right; font-weight: 700;">${numAmt.toFixed(2)}</td>
       </tr>
     `;
   }).join('');
@@ -159,7 +161,7 @@ export const generateBillHtml = (bill: BillPrintData): string => {
   <style>
     @page {
       size: A4 portrait;
-      margin: 10mm 12mm;
+      margin: 8mm 10mm;
     }
     *, *:before, *:after {
       box-sizing: border-box;
@@ -173,182 +175,223 @@ export const generateBillHtml = (bill: BillPrintData): string => {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    .bill-wrapper {
+    .bill-box-container {
       width: 100%;
-      padding: 10px 14px;
+      border: 1.5px solid #000000;
+      background: #ffffff;
     }
     .top-header {
-      position: relative;
       text-align: center;
-      margin-bottom: 18px;
-    }
-    .signatory {
-      position: absolute;
-      right: 0;
-      top: 0;
-      font-size: 13px;
-      font-weight: 600;
-      color: #000000;
+      padding: 12px 16px 10px 16px;
+      border-bottom: 1.5px solid #000000;
     }
     .comp-name {
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 800;
       color: #000000;
       margin-bottom: 2px;
       letter-spacing: -0.01em;
+      text-transform: uppercase;
     }
     .comp-city {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
-      color: #334155;
+      color: #1e293b;
     }
-    .meta-block {
-      font-size: 13.5px;
-      line-height: 1.65;
-      color: #000000;
-      margin-bottom: 16px;
+    .comp-meta {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #475569;
+      margin-top: 2px;
     }
-    .meta-row {
-      margin-bottom: 2px;
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-bottom: 1.5px solid #000000;
+      font-size: 12.5px;
+    }
+    .meta-table td {
+      border: 1px solid #000000;
+      padding: 5px 10px;
+      vertical-align: middle;
     }
     .meta-label {
-      font-weight: 400;
+      color: #475569;
+      font-weight: 500;
+      margin-right: 4px;
     }
     .meta-val {
       font-weight: 700;
+      color: #000000;
     }
     .prod-table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #000000;
-      font-size: 12.5px;
-      margin-bottom: 20px;
+      border-bottom: 1.5px solid #000000;
+      font-size: 12px;
     }
     .prod-table th {
       border: 1px solid #000000;
       padding: 6px 8px;
-      text-align: left;
       font-weight: 700;
-      background-color: #ffffff;
+      background-color: #f8fafc;
+      color: #000000;
     }
     .prod-table td {
       border: 1px solid #000000;
       padding: 6px 8px;
     }
-    .split-bottom {
+    .bottom-section {
+      width: 100%;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 20px;
+      align-items: stretch;
       page-break-inside: avoid;
     }
-    .receipt-box {
+    .left-receipt-area {
       flex: 1 1 50%;
-      max-width: 48%;
-      border: 1px solid #000000;
-      min-height: 170px;
-      max-height: 230px;
+      border-right: 1.5px solid #000000;
+      padding: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #ffffff;
-      padding: 4px;
       box-sizing: border-box;
-      overflow: hidden;
+      min-height: 140px;
+    }
+    .left-sign-area {
+      flex: 1 1 50%;
+      border-right: 1.5px solid #000000;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      box-sizing: border-box;
+      min-height: 140px;
     }
     .receipt-img {
       max-width: 100%;
-      max-height: 220px;
+      max-height: 180px;
       object-fit: contain;
       display: block;
     }
-    .summary-box {
+    .summary-area {
       flex: 1 1 50%;
-      max-width: 48%;
+      padding: 0;
+      box-sizing: border-box;
     }
     .summary-table {
       width: 100%;
       border-collapse: collapse;
-      border: 1px solid #000000;
       font-size: 12.5px;
     }
     .summary-table td {
       border: 1px solid #000000;
-      padding: 6px 10px;
+      padding: 5px 10px;
     }
     .summary-label-cell {
       font-weight: 500;
+      color: #334155;
     }
     .summary-val-cell {
       text-align: right;
-      font-weight: 500;
+      font-weight: 600;
+      color: #000000;
     }
     .summary-total-row td {
       font-weight: 800;
       font-size: 13.5px;
       padding: 7px 10px;
+      background-color: #f8fafc;
+      border-top: 1.5px solid #000000;
     }
   </style>
 </head>
 <body>
-  <div class="bill-wrapper">
+  <div class="bill-box-container">
     <!-- Header -->
     <div class="top-header">
-      <div class="signatory">${preparedBy}</div>
       ${
         storeSettings.logoUrl
-          ? `<div style="margin-bottom:6px;"><img src="${storeSettings.logoUrl}" alt="Logo" style="max-height:55px; max-width:160px; object-fit:contain;" /></div>`
+          ? `<div style="margin-bottom:4px;"><img src="${storeSettings.logoUrl}" alt="Logo" style="max-height:48px; max-width:150px; object-fit:contain;" /></div>`
           : ''
       }
       <div class="comp-name">${displayCompanyName}</div>
       <div class="comp-city">${cityLine}</div>
-      ${metaContact ? `<div style="font-size:11.5px; font-weight:600; color:#64748B; margin-top:2px;">${metaContact}</div>` : ''}
+      ${metaContact ? `<div class="comp-meta">${metaContact}</div>` : ''}
     </div>
 
-    <!-- Metadata Block -->
-    <div class="meta-block">
-      <div class="meta-row"><span class="meta-label">Bill No: </span><span class="meta-val">${bill.billNo || '-'}</span></div>
-      <div class="meta-row"><span class="meta-label">Customer Name: </span><span class="meta-val">${bill.customerName || '-'}</span></div>
-      <div class="meta-row"><span class="meta-label">Company Name: </span><span class="meta-val">${displayCompanyName}</span></div>
-      <div class="meta-row"><span class="meta-label">Total Amount: </span><span class="meta-val">${formattedTotal}</span></div>
-      <div class="meta-row"><span class="meta-label">Transport Name: </span><span class="meta-val">${transportName}</span></div>
-      <div class="meta-row"><span class="meta-label">Total No. of Cases: </span><span class="meta-val">${computedCases}</span></div>
-      <div class="meta-row"><span class="meta-label">Date: </span><span class="meta-val">${bill.date || '-'}</span></div>
-    </div>
+    <!-- Metadata Grid Table with Boxed Lines -->
+    <table class="meta-table">
+      <tr>
+        <td style="width: 50%;">
+          <span class="meta-label">Bill No:</span>
+          <span class="meta-val">${bill.billNo || '-'}</span>
+        </td>
+        <td style="width: 50%;">
+          <span class="meta-label">Date:</span>
+          <span class="meta-val">${bill.date || '-'}</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="meta-label">Customer Name:</span>
+          <span class="meta-val">${bill.customerName || '-'}</span>
+        </td>
+        <td>
+          <span class="meta-label">Company Name:</span>
+          <span class="meta-val">${displayCompanyName}</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="meta-label">Transport:</span>
+          <span class="meta-val">${transportDisplayName}</span>
+        </td>
+        <td>
+          <span class="meta-label">Total No. of Cases:</span>
+          <span class="meta-val">${computedCases}</span>
+        </td>
+      </tr>
+    </table>
 
-    <!-- Products Table -->
+    <!-- Products Table with Boxed Rows -->
     <table class="prod-table">
       <thead>
         <tr>
-          <th style="width: 50px;">Si.No</th>
-          <th>Particular</th>
-          <th style="width: 80px;">Quantity</th>
-          <th style="width: 80px;">Rate</th>
-          <th style="width: 90px;">Pkt / Unit</th>
-          <th style="width: 110px; text-align: right;">Amount</th>
+          <th style="width: 45px; text-align: center;">Si.No</th>
+          <th style="text-align: left;">Particular</th>
+          <th style="width: 75px; text-align: center;">Quantity</th>
+          <th style="width: 85px; text-align: right;">Rate (₹)</th>
+          <th style="width: 85px; text-align: center;">Pkt / Unit</th>
+          <th style="width: 105px; text-align: right;">Amount (₹)</th>
         </tr>
       </thead>
       <tbody>
-        ${productRowsHtml || '<tr><td colspan="6" style="text-align:center; padding:16px;">No product items</td></tr>'}
+        ${productRowsHtml || '<tr><td colspan="6" style="text-align:center; padding:14px; border:1px solid #000;">No product items</td></tr>'}
       </tbody>
     </table>
 
-    <!-- Bottom Split Section: Left Uploaded Receipt & Right Summary Box -->
-    <div class="split-bottom">
-      <!-- Left Column: Uploaded Godown / Transport Receipt -->
-      <div class="receipt-box">
-        ${
-          receiptSrc
-            ? `<img src="${receiptSrc}" class="receipt-img" alt="Transport Receipt" />`
-            : `<div style="text-align: center; color: #64748B; font-size: 11.5px; padding: 16px;">
-                 <div style="font-weight: 700; color: #0F172A; margin-bottom: 4px;">TRANSPORT / GODOWN RECEIPT</div>
-                 <div>(No receipt attached for this bill)</div>
-               </div>`
-        }
-      </div>
+    <!-- Bottom Section: Receipt or Signatory Box on Left & Summary Box on Right -->
+    <div class="bottom-section">
+      ${
+        receiptSrc
+          ? `
+          <div class="left-receipt-area">
+            <img src="${receiptSrc}" class="receipt-img" alt="Transport Receipt" />
+          </div>
+          `
+          : `
+          <div class="left-sign-area">
+            <div style="font-size: 11px; color: #64748B; margin-bottom: 24px;">Thank you for your business!</div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #000000; border-top: 1px dashed #000000; display: inline-block; padding-top: 4px; width: 170px;">
+              Authorized Signatory
+            </div>
+          </div>
+          `
+      }
 
       <!-- Right Column: Summary Table -->
-      <div class="summary-box">
+      <div class="summary-area">
         <table class="summary-table">
           <tbody>
             <tr>
@@ -359,7 +402,15 @@ export const generateBillHtml = (bill: BillPrintData): string => {
               discountAmt > 0
                 ? `<tr>
                     <td class="summary-label-cell">${discountLabel}</td>
-                    <td class="summary-val-cell">${discountAmt.toFixed(2)}</td>
+                    <td class="summary-val-cell">-${discountAmt.toFixed(2)}</td>
+                  </tr>`
+                : ''
+            }
+            ${
+              transportAmt > 0
+                ? `<tr>
+                    <td class="summary-label-cell">Transport Charges</td>
+                    <td class="summary-val-cell">+${transportAmt.toFixed(2)}</td>
                   </tr>`
                 : ''
             }
@@ -367,7 +418,7 @@ export const generateBillHtml = (bill: BillPrintData): string => {
               packingAmt > 0
                 ? `<tr>
                     <td class="summary-label-cell">${packingLabel}</td>
-                    <td class="summary-val-cell">${packingAmt.toFixed(2)}</td>
+                    <td class="summary-val-cell">+${packingAmt.toFixed(2)}</td>
                   </tr>`
                 : ''
             }
@@ -375,7 +426,7 @@ export const generateBillHtml = (bill: BillPrintData): string => {
               taxAmt > 0
                 ? `<tr>
                     <td class="summary-label-cell">${taxLabel}</td>
-                    <td class="summary-val-cell">${taxAmt.toFixed(2)}</td>
+                    <td class="summary-val-cell">+${taxAmt.toFixed(2)}</td>
                   </tr>`
                 : ''
             }

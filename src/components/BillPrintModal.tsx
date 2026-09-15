@@ -142,11 +142,11 @@ export const BillPrintModal: React.FC<BillPrintModalProps> = ({ open, onClose, b
             className="dheeksha-printable-section"
             sx={{
               backgroundColor: '#FFFFFF',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-              borderRadius: '6px',
-              border: '1px solid #FDE68A',
+              boxShadow: '0 4px 24px rgba(0, 0, 0, 0.1)',
+              borderRadius: '0px',
+              border: 'none',
               width: '100%',
-              maxWidth: '750px',
+              maxWidth: '820px',
             }}
           >
             <BillPrintTemplate bill={bill} />

@@ -8,6 +8,7 @@ import {
   Button,
   Snackbar,
   Alert,
+  Switch,
 } from '@mui/material';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
@@ -34,6 +35,8 @@ export interface CompanySettings {
   gstin: string;
   pan: string;
   logoUrl?: string;
+  enableTax?: boolean;
+  defaultTaxRate?: string;
 }
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
@@ -50,6 +53,8 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   gstin: '33AAAAA0000A1Z5',
   pan: 'AAAAA0000A',
   logoUrl: '',
+  enableTax: false,
+  defaultTaxRate: '18',
 };
 
 export const removeWhiteBackgroundFromDataUrl = (
@@ -150,7 +155,7 @@ export const SettingsPage: React.FC = () => {
     severity: 'success',
   });
 
-  const handleChange = (field: keyof CompanySettings, value: string) => {
+  const handleChange = <K extends keyof CompanySettings>(field: K, value: CompanySettings[K]) => {
     setSettings((prev) => ({
       ...prev,
       [field]: value,
@@ -843,14 +848,80 @@ export const SettingsPage: React.FC = () => {
                 backgroundColor: '#FFFFFF',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <ReceiptLongRoundedIcon sx={{ color: '#2563EB', fontSize: 20 }} />
-                <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#1E40AF' }}>
-                  Tax & Legal Registration
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ReceiptLongRoundedIcon sx={{ color: '#2563EB', fontSize: 20 }} />
+                  <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#1E40AF' }}>
+                    Tax & Legal Registration
+                  </Typography>
+                </Box>
+
+                {/* Tax / GST Toggle Button */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.2,
+                    backgroundColor: settings.enableTax ? '#EFF6FF' : '#F8FAFC',
+                    border: settings.enableTax ? '1.5px solid #93C5FD' : '1px solid #E2E8F0',
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: '20px',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <Typography sx={{ fontSize: '13px', fontWeight: 700, color: settings.enableTax ? '#1D4ED8' : '#64748B' }}>
+                    {settings.enableTax ? 'Tax / GST: ON' : 'Tax / GST: OFF'}
+                  </Typography>
+                  <Switch
+                    checked={Boolean(settings.enableTax)}
+                    onChange={(e) => handleChange('enableTax', e.target.checked)}
+                    color="primary"
+                    size="small"
+                  />
+                </Box>
               </Box>
 
+              <Typography sx={{ fontSize: '12px', color: '#64748B', mb: 2 }}>
+                {settings.enableTax
+                  ? 'Tax calculation is ENABLED. Tax / GST percentage will be displayed and applied during billing.'
+                  : 'Tax calculation is DISABLED. Tax / GST field will be hidden from billing.'}
+              </Typography>
+
               <Grid container spacing={2}>
+                {/* When Tax Toggle is ON, show Default Tax Rate field */}
+                {settings.enableTax && (
+                  <Grid size={{ xs: 12 }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: '10px',
+                        backgroundColor: '#EFF6FF',
+                        border: '1px dashed #93C5FD',
+                        mb: 1,
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#1E40AF', mb: 1 }}>
+                        Default GST / Tax Rate (%)
+                      </Typography>
+                      <TextField
+                        size="small"
+                        value={settings.defaultTaxRate || ''}
+                        onChange={(e) => handleChange('defaultTaxRate', e.target.value)}
+                        placeholder="e.g. 18 or 5"
+                        sx={{
+                          maxWidth: '260px',
+                          backgroundColor: '#FFFFFF',
+                          '& .MuiInputBase-input': { fontWeight: 700, color: '#1D4ED8', fontSize: '14px' },
+                        }}
+                      />
+                      <Typography sx={{ fontSize: '11.5px', color: '#3B82F6', mt: 0.8 }}>
+                        This tax percentage will automatically apply as the default tax rate in the billing page.
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     fullWidth
