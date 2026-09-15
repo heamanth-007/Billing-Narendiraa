@@ -96,7 +96,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     return initialCustomerName || draft.customerName || '';
   });
   const [company, setCompany] = useState<string>(() => {
-    return storeSettings.companyName || 'Dheeksha Trade Link';
+    return storeSettings.companyName || 'General';
   });
   const [billNo, setBillNo] = useState<string>(() => draft.billNo || '');
   const [billDate, setBillDate] = useState<string>(() => {
@@ -145,7 +145,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     const handleSettingsUpdate = () => {
       const updated = getStoredSettings();
       setStoreSettings(updated);
-      setCompany(updated.companyName || 'Dheeksha Trade Link');
+      setCompany(updated.companyName || 'General');
       if (updated.enableTax && (!tax || tax === '0')) {
         setTax(updated.defaultTaxRate || '0');
       } else if (!updated.enableTax) {
@@ -176,7 +176,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
       if (Array.isArray(compRes) && compRes.length > 0) {
         const mapped = compRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
         setCompanyOptions(mapped);
-        if (mapped.length > 0 && (!company || company === 'Dheeksha Trade' || company === 'Dheeksha Trade Link')) {
+        if (mapped.length > 0 && (!company || company === 'General' || company === 'Dheeksha Trade' || company === 'Dheeksha Trade Link')) {
           setCompany(storeSettings.companyName || mapped[0].name);
         }
       }

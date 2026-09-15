@@ -1,4 +1,4 @@
-import { useState, type FC, type FormEvent } from 'react';
+import { useState, useEffect, type FC, type FormEvent } from 'react';
 import {
   Box,
   Typography,
@@ -13,20 +13,41 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import { AuthApi } from '../services/api';
-import { getStoredSettings } from './SettingsPage';
+import { AuthApi, SettingsApi } from '../services/api';
+import { getStoredSettings, DEFAULT_COMPANY_SETTINGS, type CompanySettings } from './SettingsPage';
 
 interface LoginPageProps {
   onLoginSuccess: (user: { username: string; role: string }) => void;
 }
 
 export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [settings] = useState(() => getStoredSettings());
+  const [settings, setSettings] = useState<CompanySettings>(() => getStoredSettings());
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Fetch settings from MongoDB database on load
+  useEffect(() => {
+    SettingsApi.get()
+      .then((res) => {
+        if (res && res.data) {
+          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...res.data };
+          setSettings(remoteSettings);
+          localStorage.setItem('dheeksha_app_settings', JSON.stringify(remoteSettings));
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch settings on login screen:', err);
+      });
+
+    const handleUpdate = () => {
+      setSettings(getStoredSettings());
+    };
+    window.addEventListener('dheeksha_settings_updated', handleUpdate);
+    return () => window.removeEventListener('dheeksha_settings_updated', handleUpdate);
+  }, []);
 
   const handleSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
@@ -54,7 +75,7 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
       // Fallback offline verification if server is unreachable or initial run
       if (
         (username.trim().toLowerCase() === 'admin' && (password === 'admin123' || password === 'admin')) ||
-        (username.trim().toLowerCase() === 'dheeksha' && (password === 'dheeksha123' || password === 'admin123'))
+        (password === 'admin123' || password === 'dheeksha123')
       ) {
         const fallbackUser = { username: username.trim().toLowerCase(), role: 'admin' };
         localStorage.setItem('dheeksha_auth_token', 'local-admin-token');

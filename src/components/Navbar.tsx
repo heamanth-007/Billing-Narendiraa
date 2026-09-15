@@ -179,7 +179,7 @@ export const Navbar: FC<NavbarProps> = ({
                 textOverflow: 'ellipsis',
               }}
             >
-              {companySettings.companyName || 'Dheeksha Trade Link'}
+              {companySettings.companyName || 'Billing & Management'}
             </Typography>
             <Typography
               sx={{
@@ -445,7 +445,7 @@ export const Navbar: FC<NavbarProps> = ({
           >
             <Box>
               <Typography sx={{ fontSize: '15px', fontWeight: 800 }}>
-                {companySettings.companyName || 'Dheeksha Trade'}
+                {companySettings.companyName || 'Billing & Management'}
               </Typography>
               <Typography sx={{ fontSize: '11px', color: '#FEF08A', fontWeight: 600 }}>
                 Main Navigation
