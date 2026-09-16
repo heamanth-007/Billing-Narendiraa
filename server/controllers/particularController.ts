@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Particular } from '../models/Particular';
 import { AccountLedger } from '../models/AccountLedger';
+import { Customer } from '../models/Customer';
 import { escapeRegex, recalculateCustomerBalance } from '../utils/ledgerUtils';
 import { isCloudinaryConfigured, uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary';
 
@@ -95,38 +96,62 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
     const trimmedCustName = (customerName || 'General').trim();
 
     // Auto-create / update Customer in database if needed
-    try {
-      const { Customer } = await import('../models/Customer');
-      const existingCustomer = await Customer.findOne({
-        name: { $regex: new RegExp(`^${escapeRegex(trimmedCustName)}$`, 'i') },
-      });
-      if (!existingCustomer && trimmedCustName.toLowerCase() !== 'general') {
-        const allCusts = await Customer.find().sort({ createdAt: 1 });
-        let maxId = 0;
-        allCusts.forEach((c) => {
-          if (c.idCode) {
-            const m = c.idCode.match(/\d+/);
-            if (m) {
-              const n = parseInt(m[0], 10);
-              if (n > maxId) maxId = n;
+    if (trimmedCustName) {
+      try {
+        const existingCustomer = await Customer.findOne({
+          name: { $regex: new RegExp(`^${escapeRegex(trimmedCustName)}$`, 'i') },
+        });
+
+        if (!existingCustomer) {
+          const allCusts = await Customer.find().sort({ createdAt: 1 });
+          let maxId = 0;
+          allCusts.forEach((c) => {
+            if (c.idCode) {
+              const m = c.idCode.match(/\d+/);
+              if (m) {
+                const n = parseInt(m[0], 10);
+                if (n > maxId) maxId = n;
+              }
             }
+          });
+
+          const letter = trimmedCustName.charAt(0).toUpperCase() || 'C';
+          const avatarColors = [
+            { bg: '#EFF6FF', color: '#1D4ED8' },
+            { bg: '#ECFDF5', color: '#047857' },
+            { bg: '#FEF3C7', color: '#B45309' },
+            { bg: '#FDF2F8', color: '#BE185D' },
+            { bg: '#F5F3FF', color: '#6D28D9' },
+            { bg: '#FFF1F2', color: '#BE123C' },
+          ];
+          const colorPair = avatarColors[trimmedCustName.length % avatarColors.length];
+
+          await Customer.create({
+            name: trimmedCustName,
+            mobile: customerPhone || '-',
+            address: customerAddress || '-',
+            gst: customerGst || 'N/A',
+            avatarLetter: letter,
+            avatarBg: colorPair.bg,
+            avatarColor: colorPair.color,
+            idCode: `#${(maxId + 1).toString().padStart(4, '0')}`,
+          });
+          console.log(`[Auto Customer Created]: ${trimmedCustName}`);
+        } else if (customerPhone || customerAddress || customerGst) {
+          if ((!existingCustomer.mobile || existingCustomer.mobile === '-') && customerPhone) {
+            existingCustomer.mobile = customerPhone;
           }
-        });
-        await Customer.create({
-          name: trimmedCustName,
-          mobile: customerPhone || '',
-          address: customerAddress || '',
-          gst: customerGst || '',
-          idCode: `#${(maxId + 1).toString().padStart(4, '0')}`,
-        });
-      } else if (existingCustomer && (customerPhone || customerAddress || customerGst)) {
-        if (!existingCustomer.mobile && customerPhone) existingCustomer.mobile = customerPhone;
-        if (!existingCustomer.address && customerAddress) existingCustomer.address = customerAddress;
-        if (!existingCustomer.gst && customerGst) existingCustomer.gst = customerGst;
-        await existingCustomer.save();
+          if ((!existingCustomer.address || existingCustomer.address === '-') && customerAddress) {
+            existingCustomer.address = customerAddress;
+          }
+          if ((!existingCustomer.gst || existingCustomer.gst === 'N/A') && customerGst) {
+            existingCustomer.gst = customerGst;
+          }
+          await existingCustomer.save();
+        }
+      } catch (custSyncErr) {
+        console.warn('[Customer Sync Error]:', custSyncErr);
       }
-    } catch (custSyncErr) {
-      console.warn('[Customer Sync Warn]:', custSyncErr);
     }
 
     const billTotalNum = parseFloat(String(total || amount || '0').replace(/,/g, '')) || 0;
@@ -263,6 +288,53 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
     if (!updatedParticular) {
       res.status(404).json({ success: false, error: 'Failed to update particular bill' });
       return;
+    }
+
+    // Auto-create / update Customer record if needed
+    const updatedCustName = (updatedParticular.customerName || '').trim();
+    if (updatedCustName) {
+      try {
+        const existingCustomer = await Customer.findOne({
+          name: { $regex: new RegExp(`^${escapeRegex(updatedCustName)}$`, 'i') },
+        });
+        if (!existingCustomer) {
+          const allCusts = await Customer.find().sort({ createdAt: 1 });
+          let maxId = 0;
+          allCusts.forEach((c) => {
+            if (c.idCode) {
+              const m = c.idCode.match(/\d+/);
+              if (m) {
+                const n = parseInt(m[0], 10);
+                if (n > maxId) maxId = n;
+              }
+            }
+          });
+
+          const letter = updatedCustName.charAt(0).toUpperCase() || 'C';
+          const avatarColors = [
+            { bg: '#EFF6FF', color: '#1D4ED8' },
+            { bg: '#ECFDF5', color: '#047857' },
+            { bg: '#FEF3C7', color: '#B45309' },
+            { bg: '#FDF2F8', color: '#BE185D' },
+            { bg: '#F5F3FF', color: '#6D28D9' },
+            { bg: '#FFF1F2', color: '#BE123C' },
+          ];
+          const colorPair = avatarColors[updatedCustName.length % avatarColors.length];
+
+          await Customer.create({
+            name: updatedCustName,
+            mobile: updatedParticular.customerPhone || '-',
+            address: updatedParticular.customerAddress || '-',
+            gst: updatedParticular.customerGst || 'N/A',
+            avatarLetter: letter,
+            avatarBg: colorPair.bg,
+            avatarColor: colorPair.color,
+            idCode: `#${(maxId + 1).toString().padStart(4, '0')}`,
+          });
+        }
+      } catch (custSyncErr) {
+        console.warn('[Customer Update Sync Error]:', custSyncErr);
+      }
     }
 
     // Update or re-sync AccountLedger entries (BILL and PAYMENT)

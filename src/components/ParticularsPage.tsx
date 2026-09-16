@@ -387,6 +387,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
       localStorage.removeItem('dheeksha_active_customer');
       fetchNextBillNo();
       refreshDate();
+      loadOptions();
 
       if (!andPrint) {
         alert(`Bill #${payload.billNo} saved successfully!`);
