@@ -34,8 +34,9 @@ function App() {
     // Fetch settings from MongoDB database so brand identity is always live across all devices
     SettingsApi.get()
       .then((res) => {
-        if (res && res.data) {
-          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...res.data };
+        const data = (res && typeof res === 'object' && 'data' in res && res.data) ? res.data : res;
+        if (data && typeof data === 'object') {
+          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...data };
           localStorage.setItem('dheeksha_app_settings', JSON.stringify(remoteSettings));
           window.dispatchEvent(new Event('dheeksha_settings_updated'));
           updateTitle();

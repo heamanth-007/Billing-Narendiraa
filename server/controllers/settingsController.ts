@@ -21,11 +21,11 @@ export const getSettings = async (_req: Request, res: Response, next: NextFuncti
  */
 export const updateSettings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const updateData = req.body;
+    const { _id, id, createdAt, updatedAt, __v, ...cleanedData } = req.body;
     const settings = await Settings.findOneAndUpdate(
       {},
-      { $set: updateData },
-      { new: true, upsert: true }
+      { $set: cleanedData },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
     res.status(200).json({

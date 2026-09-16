@@ -176,7 +176,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
       if (Array.isArray(compRes) && compRes.length > 0) {
         const mapped = compRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
         setCompanyOptions(mapped);
-        if (mapped.length > 0 && (!company || company === 'General' || company === 'Dheeksha Trade' || company === 'Dheeksha Trade Link')) {
+        if (mapped.length > 0 && (!company || company === 'General')) {
           setCompany(storeSettings.companyName || mapped[0].name);
         }
       }

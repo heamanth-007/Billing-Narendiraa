@@ -193,7 +193,7 @@ export const Navbar: FC<NavbarProps> = ({
                 textOverflow: 'ellipsis',
               }}
             >
-              {companySettings.tagline ? companySettings.tagline : `${companySettings.city || 'Sivakasi'} Fireworks & Trade`}
+              {companySettings.tagline || (companySettings.city ? `${companySettings.city}` : 'Billing & Management')}
             </Typography>
           </Box>
         </Box>

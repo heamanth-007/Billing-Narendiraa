@@ -163,23 +163,24 @@ export const SettingsPage: React.FC = () => {
     const loadSettings = async () => {
       try {
         const res = await SettingsApi.get();
-        if (res && res.data) {
+        const data = (res && typeof res === 'object' && 'data' in res && res.data) ? res.data : res;
+        if (data && typeof data === 'object') {
           const remoteSettings: CompanySettings = {
-            companyName: res.data.companyName || DEFAULT_COMPANY_SETTINGS.companyName,
-            tagline: res.data.tagline ?? DEFAULT_COMPANY_SETTINGS.tagline,
-            ownerName: res.data.ownerName ?? DEFAULT_COMPANY_SETTINGS.ownerName,
-            phone: res.data.phone ?? DEFAULT_COMPANY_SETTINGS.phone,
-            whatsapp: res.data.whatsapp ?? DEFAULT_COMPANY_SETTINGS.whatsapp,
-            email: res.data.email ?? DEFAULT_COMPANY_SETTINGS.email,
-            address: res.data.address ?? DEFAULT_COMPANY_SETTINGS.address,
-            city: res.data.city ?? DEFAULT_COMPANY_SETTINGS.city,
-            pincode: res.data.pincode ?? DEFAULT_COMPANY_SETTINGS.pincode,
-            state: res.data.state ?? DEFAULT_COMPANY_SETTINGS.state,
-            gstin: res.data.gstin ?? DEFAULT_COMPANY_SETTINGS.gstin,
-            pan: res.data.pan ?? DEFAULT_COMPANY_SETTINGS.pan,
-            logoUrl: res.data.logoUrl ?? '',
-            enableTax: Boolean(res.data.enableTax),
-            defaultTaxRate: res.data.defaultTaxRate || '18',
+            companyName: data.companyName ?? DEFAULT_COMPANY_SETTINGS.companyName,
+            tagline: data.tagline ?? DEFAULT_COMPANY_SETTINGS.tagline,
+            ownerName: data.ownerName ?? DEFAULT_COMPANY_SETTINGS.ownerName,
+            phone: data.phone ?? DEFAULT_COMPANY_SETTINGS.phone,
+            whatsapp: data.whatsapp ?? DEFAULT_COMPANY_SETTINGS.whatsapp,
+            email: data.email ?? DEFAULT_COMPANY_SETTINGS.email,
+            address: data.address ?? DEFAULT_COMPANY_SETTINGS.address,
+            city: data.city ?? DEFAULT_COMPANY_SETTINGS.city,
+            pincode: data.pincode ?? DEFAULT_COMPANY_SETTINGS.pincode,
+            state: data.state ?? DEFAULT_COMPANY_SETTINGS.state,
+            gstin: data.gstin ?? DEFAULT_COMPANY_SETTINGS.gstin,
+            pan: data.pan ?? DEFAULT_COMPANY_SETTINGS.pan,
+            logoUrl: data.logoUrl ?? '',
+            enableTax: Boolean(data.enableTax),
+            defaultTaxRate: data.defaultTaxRate || '18',
           };
           setSettings(remoteSettings);
           localStorage.setItem('dheeksha_app_settings', JSON.stringify(remoteSettings));
@@ -280,16 +281,39 @@ export const SettingsPage: React.FC = () => {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      // 1. Immediately cache in localStorage for fast local access
+      // 1. Immediately cache in localStorage for instant UI feedback
       localStorage.setItem('dheeksha_app_settings', JSON.stringify(settings));
       window.dispatchEvent(new Event('dheeksha_settings_updated'));
 
-      // 2. Persist to MongoDB database so it works across all devices & deployments!
-      await SettingsApi.update(settings);
+      // 2. Persist to MongoDB database so it syncs across all devices & deployments!
+      const saveRes = await SettingsApi.update(settings);
+      const data = (saveRes && typeof saveRes === 'object' && 'data' in saveRes && saveRes.data) ? saveRes.data : saveRes;
+      if (data && typeof data === 'object' && (data.companyName !== undefined || data._id)) {
+        const syncedSettings: CompanySettings = {
+          companyName: data.companyName ?? settings.companyName,
+          tagline: data.tagline ?? settings.tagline,
+          ownerName: data.ownerName ?? settings.ownerName,
+          phone: data.phone ?? settings.phone,
+          whatsapp: data.whatsapp ?? settings.whatsapp,
+          email: data.email ?? settings.email,
+          address: data.address ?? settings.address,
+          city: data.city ?? settings.city,
+          pincode: data.pincode ?? settings.pincode,
+          state: data.state ?? settings.state,
+          gstin: data.gstin ?? settings.gstin,
+          pan: data.pan ?? settings.pan,
+          logoUrl: data.logoUrl ?? settings.logoUrl,
+          enableTax: Boolean(data.enableTax ?? settings.enableTax),
+          defaultTaxRate: data.defaultTaxRate ?? settings.defaultTaxRate ?? '18',
+        };
+        setSettings(syncedSettings);
+        localStorage.setItem('dheeksha_app_settings', JSON.stringify(syncedSettings));
+        window.dispatchEvent(new Event('dheeksha_settings_updated'));
+      }
 
       setToast({
         open: true,
-        message: '✅ Company Profile, Logo & Settings saved to Database successfully!',
+        message: '✅ Company Profile, Logo & Settings saved to MongoDB Database successfully!',
         severity: 'success',
       });
     } catch (err: any) {

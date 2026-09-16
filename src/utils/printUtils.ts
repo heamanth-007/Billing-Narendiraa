@@ -910,7 +910,7 @@ export const generateParticularsListPrintHtml = (particulars: any[], dateRangeTe
     const amt = parseFloat(String(p.total || p.amount || '0').replace(/,/g, '')) || 0;
     totalSum += amt;
     const countItems = (p.products || []).length;
-    const billCompName = (p.companyName && p.companyName !== 'Dheeksha Trade' && p.companyName !== 'Dheeksha Trade Link')
+    const billCompName = (p.companyName && p.companyName.trim() !== '' && p.companyName !== 'General')
       ? p.companyName
       : storeSettings.companyName || '-';
 

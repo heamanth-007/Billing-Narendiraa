@@ -32,8 +32,9 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     SettingsApi.get()
       .then((res) => {
-        if (res && res.data) {
-          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...res.data };
+        const data = (res && typeof res === 'object' && 'data' in res && res.data) ? res.data : res;
+        if (data && typeof data === 'object') {
+          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...data };
           setSettings(remoteSettings);
           localStorage.setItem('dheeksha_app_settings', JSON.stringify(remoteSettings));
         }
@@ -405,7 +406,7 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
           }}
         >
           <Typography sx={{ fontSize: '12px', color: '#B45309', fontWeight: 600 }}>
-            {settings.companyName || 'Siva Balaji Crackers & Sri Dhanalakshmi'} {settings.tagline ? `• ${settings.tagline}` : ''}
+            {settings.companyName || 'Billing & Management System'} {settings.tagline ? `• ${settings.tagline}` : ''}
           </Typography>
         </Box>
       </Paper>
