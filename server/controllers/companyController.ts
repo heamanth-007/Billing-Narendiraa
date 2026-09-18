@@ -126,19 +126,30 @@ export const deleteCompany = async (req: Request, res: Response, next: NextFunct
     const companyName = company.name;
     const escapedCompName = escapeRegex(companyName.trim());
 
-    // 1. Delete Company
-    await Company.findByIdAndDelete(req.params.id);
-
-    // 2. Cascade Delete: Delete all Particulars for this company
     const { Particular } = await import('../models/Particular');
     const { AccountLedger } = await import('../models/AccountLedger');
     const { recalculateCustomerBalance } = await import('../utils/ledgerUtils');
+    const { isCloudinaryConfigured, deleteFromCloudinary } = await import('../config/cloudinary');
 
+    // 1. Delete associated Cloudinary assets for this company's particulars
     const particularsToDelete = await Particular.find({
       companyName: { $regex: new RegExp(`^${escapedCompName}$`, 'i') },
     });
     const affectedCustomers = [...new Set(particularsToDelete.map((p) => p.customerName))];
 
+    if (isCloudinaryConfigured()) {
+      for (const p of particularsToDelete) {
+        if (p.pdfPublicId) {
+          try {
+            await deleteFromCloudinary(p.pdfPublicId);
+          } catch (cloudErr) {
+            console.warn('[Cloudinary Warning] Failed to delete company bill asset:', cloudErr);
+          }
+        }
+      }
+    }
+
+    // 2. Cascade Delete: Delete all Particulars for this company
     await Particular.deleteMany({
       companyName: { $regex: new RegExp(`^${escapedCompName}$`, 'i') },
     });
@@ -152,6 +163,9 @@ export const deleteCompany = async (req: Request, res: Response, next: NextFunct
     for (const custName of affectedCustomers) {
       await recalculateCustomerBalance(custName);
     }
+
+    // 5. Delete Company
+    await Company.findByIdAndDelete(req.params.id);
 
     res.status(200).json({ success: true, data: {} });
   } catch (error) {

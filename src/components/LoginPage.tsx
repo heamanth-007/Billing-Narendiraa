@@ -98,11 +98,26 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'radial-gradient(ellipse at 50% 40%, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%)',
+        background: 'radial-gradient(ellipse at 50% 30%, #990000 0%, #750909 50%, #4D0303 100%)',
         p: 2.5,
         boxSizing: 'border-box',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* Decorative Golden Ambient Sparks */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(circle at 20% 20%, rgba(255, 215, 0, 0.15) 0%, transparent 40%), radial-gradient(circle at 80% 80%, rgba(245, 158, 11, 0.12) 0%, transparent 40%)',
+          pointerEvents: 'none',
+        }}
+      />
+
       <Paper
         elevation={0}
         component="form"
@@ -113,10 +128,11 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
           backgroundColor: '#FFFFFF',
           borderRadius: '20px',
           p: { xs: 3.5, sm: '42px 38px 32px 38px' },
-          boxShadow: '0 20px 50px -10px rgba(180, 83, 9, 0.16), 0 0 0 1.5px #FDE68A',
-          border: '1.5px solid #FCD34D',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 2px #F59E0B',
+          border: '1.5px solid #FFD700',
           boxSizing: 'border-box',
           position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* Top Logo / Festive Shield Badge */}
@@ -126,8 +142,8 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
             src={settings.logoUrl}
             alt="Logo"
             sx={{
-              maxHeight: 64,
-              maxWidth: 180,
+              maxHeight: 68,
+              maxWidth: 190,
               objectFit: 'contain',
               display: 'block',
               mx: 'auto',
@@ -138,32 +154,32 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
         ) : (
           <Box
             sx={{
-              width: 56,
-              height: 56,
+              width: 60,
+              height: 60,
               borderRadius: '16px',
-              background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
-              border: '2px solid #F59E0B',
+              background: 'linear-gradient(135deg, #990000 0%, #750909 100%)',
+              border: '2px solid #FFD700',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               mx: 'auto',
               mb: 2.2,
-              boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)',
+              boxShadow: '0 6px 18px rgba(153, 0, 0, 0.4)',
             }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M12 2L4 5.5V11.5C4 16.6 7.4 21.3 12 22.5C16.6 21.3 20 16.6 20 11.5V5.5L12 2Z"
-                stroke="#FEF08A"
+                stroke="#FFD700"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                fill="rgba(254, 240, 138, 0.2)"
+                fill="rgba(255, 215, 0, 0.2)"
               />
-              <circle cx="12" cy="10" r="2.2" stroke="#FEF08A" strokeWidth="1.8" />
+              <circle cx="12" cy="10" r="2.2" stroke="#FFD700" strokeWidth="1.8" />
               <path
                 d="M8.5 16C8.5 14.35 10.07 13 12 13C13.93 13 15.5 14.35 15.5 16"
-                stroke="#FEF08A"
+                stroke="#FFD700"
                 strokeWidth="1.8"
                 strokeLinecap="round"
               />
@@ -176,8 +192,8 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
           variant="h1"
           sx={{
             fontSize: '24px',
-            fontWeight: 800,
-            color: '#B91C1C',
+            fontWeight: 900,
+            color: '#990000',
             textAlign: 'center',
             letterSpacing: '-0.02em',
             lineHeight: 1.2,
@@ -191,14 +207,15 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <Typography
           sx={{
             fontSize: '13.5px',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#B45309',
             textAlign: 'center',
             letterSpacing: '-0.01em',
             mb: 3.5,
           }}
         >
-          {settings.companyName ? `${settings.companyName} Billing & Management` : 'Billing & Management System'}
+          {settings.companyName || 'NARENDIRAA ENTERPRISES'}
+          {settings.tagline ? ` • ${settings.tagline}` : ' • Sivakasi'}
         </Typography>
 
         {/* Error Alert if any */}
@@ -217,7 +234,7 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
               display: 'block',
               fontSize: '13px',
               fontWeight: 700,
-              color: '#451A03',
+              color: '#240808',
               mb: 0.8,
               letterSpacing: '-0.01em',
             }}
@@ -239,9 +256,9 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 borderColor: '#F59E0B',
               },
               '&:focus-within': {
-                borderColor: '#DC2626',
+                borderColor: '#990000',
                 backgroundColor: '#FFFFFF',
-                boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
+                boxShadow: '0 0 0 3px rgba(153, 0, 0, 0.15)',
               },
             }}
           >
@@ -255,7 +272,7 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
               sx={{
                 fontSize: '14px',
                 fontWeight: 600,
-                color: '#1F1714',
+                color: '#240808',
                 '& input': {
                   p: 0,
                   '&::placeholder': {
@@ -277,7 +294,7 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
               display: 'block',
               fontSize: '13px',
               fontWeight: 700,
-              color: '#451A03',
+              color: '#240808',
               mb: 0.8,
               letterSpacing: '-0.01em',
             }}
@@ -300,9 +317,9 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 borderColor: '#F59E0B',
               },
               '&:focus-within': {
-                borderColor: '#DC2626',
+                borderColor: '#990000',
                 backgroundColor: '#FFFFFF',
-                boxShadow: '0 0 0 3px rgba(220, 38, 38, 0.12)',
+                boxShadow: '0 0 0 3px rgba(153, 0, 0, 0.15)',
               },
             }}
           >
@@ -327,7 +344,7 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
               sx={{
                 fontSize: '14px',
                 fontWeight: 600,
-                color: '#1F1714',
+                color: '#240808',
                 '& input': {
                   p: 0,
                   letterSpacing: showPassword ? 'normal' : '0.15em',
@@ -371,20 +388,20 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
           disabled={loading}
           endIcon={!loading && <ArrowForwardRoundedIcon sx={{ fontSize: '18px !important' }} />}
           sx={{
-            background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+            background: 'linear-gradient(135deg, #990000 0%, #750909 100%)',
             color: '#FFFFFF',
             height: '48px',
             borderRadius: '10px',
             fontSize: '15px',
             fontWeight: 800,
             textTransform: 'none',
-            letterSpacing: '0.01em',
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+            letterSpacing: '0.02em',
+            boxShadow: '0 4px 14px rgba(153, 0, 0, 0.35)',
             transition: 'all 0.2s ease',
-            border: '1px solid #F59E0B',
+            border: '1.5px solid #F59E0B',
             '&:hover': {
-              background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
-              boxShadow: '0 6px 16px rgba(220, 38, 38, 0.4)',
+              background: 'linear-gradient(135deg, #750909 0%, #5E0505 100%)',
+              boxShadow: '0 6px 18px rgba(153, 0, 0, 0.45)',
               transform: 'translateY(-1px)',
             },
             '&.Mui-disabled': {
@@ -405,8 +422,8 @@ export const LoginPage: FC<LoginPageProps> = ({ onLoginSuccess }) => {
             textAlign: 'center',
           }}
         >
-          <Typography sx={{ fontSize: '12px', color: '#B45309', fontWeight: 600 }}>
-            {settings.companyName || 'Billing & Management System'} {settings.tagline ? `• ${settings.tagline}` : ''}
+          <Typography sx={{ fontSize: '12px', color: '#B45309', fontWeight: 700 }}>
+            {settings.companyName || 'NARENDIRAA ENTERPRISES'} {settings.tagline ? `• ${settings.tagline}` : '• Sivakasi'}
           </Typography>
         </Box>
       </Paper>

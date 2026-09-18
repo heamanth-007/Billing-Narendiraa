@@ -167,8 +167,9 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
         <Box
           sx={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: { xs: 'stretch', sm: 'center' },
             gap: 1.5,
+            flexDirection: { xs: 'column', sm: 'row' },
             width: { xs: '100%', sm: 'auto' },
           }}
         >
@@ -221,60 +222,64 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
             />
           </Box>
 
-          {/* Print Companies List Button */}
-          <Button
-            variant="outlined"
-            onClick={() => printCompaniesListDirectly(filteredCompanies)}
-            startIcon={<PrintOutlinedIcon sx={{ fontSize: 18 }} />}
-            sx={{
-              backgroundColor: '#FFFFFF',
-              color: '#7C2D12',
-              borderColor: '#FCD34D',
-              borderWidth: '1.5px',
-              height: '38px',
-              px: 1.8,
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 700,
-              textTransform: 'none',
-              letterSpacing: '-0.01em',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 1px 2px rgba(217, 119, 6, 0.08)',
-              '&:hover': {
-                backgroundColor: '#FFFBEB',
-                borderColor: '#F59E0B',
-              },
-            }}
-          >
-            Print List ({filteredCompanies.length})
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+            {/* Print Companies List Button */}
+            <Button
+              variant="outlined"
+              onClick={() => printCompaniesListDirectly(filteredCompanies)}
+              startIcon={<PrintOutlinedIcon sx={{ fontSize: 18 }} />}
+              sx={{
+                backgroundColor: '#FFFFFF',
+                color: '#7C2D12',
+                borderColor: '#FCD34D',
+                borderWidth: '1.5px',
+                height: '38px',
+                px: 1.8,
+                flex: { xs: 1, sm: 'initial' },
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                textTransform: 'none',
+                letterSpacing: '-0.01em',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 2px rgba(217, 119, 6, 0.08)',
+                '&:hover': {
+                  backgroundColor: '#FFFBEB',
+                  borderColor: '#F59E0B',
+                },
+              }}
+            >
+              Print ({filteredCompanies.length})
+            </Button>
 
-          {/* Add Company Button */}
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={onAddCompany}
-            startIcon={<AddRoundedIcon sx={{ fontSize: 19 }} />}
-            sx={{
-              background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
-              color: '#FFFFFF',
-              border: '1px solid #F59E0B',
-              height: '38px',
-              px: 2,
-              borderRadius: '8px',
-              fontSize: '13.5px',
-              fontWeight: 700,
-              textTransform: 'none',
-              letterSpacing: '-0.01em',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
-              },
-            }}
-          >
-            Add Company
-          </Button>
+            {/* Add Company Button */}
+            <Button
+              variant="contained"
+              disableElevation
+              onClick={onAddCompany}
+              startIcon={<AddRoundedIcon sx={{ fontSize: 19 }} />}
+              sx={{
+                background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+                color: '#FFFFFF',
+                border: '1px solid #F59E0B',
+                height: '38px',
+                px: 2,
+                flex: { xs: 1, sm: 'initial' },
+                borderRadius: '8px',
+                fontSize: '13.5px',
+                fontWeight: 700,
+                textTransform: 'none',
+                letterSpacing: '-0.01em',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
+                },
+              }}
+            >
+              Add Company
+            </Button>
+          </Box>
         </Box>
       </Box>
 
@@ -290,7 +295,8 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
           overflow: 'hidden',
         }}
       >
-        <TableContainer>
+        {/* Desktop Table */}
+        <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
           <Table sx={{ width: '100%' }} aria-label="companies table">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
@@ -541,6 +547,129 @@ export const CompaniesPage: FC<CompaniesPageProps> = ({ onAddCompany }) => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Mobile Company Cards */}
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            flexDirection: 'column',
+            gap: 1.5,
+            p: { xs: 1.5, sm: 2 },
+          }}
+        >
+          {loading ? (
+            <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress size={32} sx={{ color: '#DC2626' }} />
+            </Box>
+          ) : filteredCompanies.length === 0 ? (
+            <Box sx={{ py: 4, textAlign: 'center', color: '#786C58' }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+                No companies found. Click "Add Company" to create one.
+              </Typography>
+            </Box>
+          ) : (
+            filteredCompanies.map((company, index) => {
+              const recordId = company._id || company.id || '';
+              const slDisplay = company.slNo || (index + 1).toString().padStart(2, '0');
+              const avatarInitial = company.avatarLetter || company.name.charAt(0).toUpperCase();
+
+              return (
+                <Box
+                  key={recordId || index}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: '10px',
+                    border: '1.5px solid #FDE68A',
+                    backgroundColor: '#FFFFFF',
+                    boxShadow: '0 2px 6px rgba(217, 119, 6, 0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1.2,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          backgroundColor: company.avatarBg || '#FEF3C7',
+                          color: company.avatarColor || '#B91C1C',
+                          border: '1px solid #FDE68A',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '13px',
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {avatarInitial}
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontSize: '14px', fontWeight: 800, color: '#1F1714' }}>
+                          {company.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: '11px', color: '#786C58', fontWeight: 600 }}>
+                          SL: #{slDisplay}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ p: 1, backgroundColor: '#FFFDF7', borderRadius: '8px', border: '1px solid #FEF3C7', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Typography sx={{ fontSize: '12px', color: '#334155' }}>
+                      <strong>Address:</strong> {company.address || 'N/A'}
+                    </Typography>
+                    <Typography sx={{ fontSize: '12px', color: '#334155' }}>
+                      <strong>GSTIN:</strong> {company.gstin || 'N/A'}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Button
+                      size="small"
+                      onClick={() => handleOpenEdit(company)}
+                      startIcon={<ModeEditOutlineRoundedIcon sx={{ fontSize: 15 }} />}
+                      sx={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: '#B45309',
+                        backgroundColor: '#FFFBEB',
+                        border: '1px solid #FDE68A',
+                        textTransform: 'none',
+                        py: 0.4,
+                        px: 1.5,
+                        borderRadius: '6px',
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => handleDelete(recordId)}
+                      startIcon={<DeleteOutlineRoundedIcon sx={{ fontSize: 15 }} />}
+                      sx={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: '#DC2626',
+                        backgroundColor: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        textTransform: 'none',
+                        py: 0.4,
+                        px: 1.5,
+                        borderRadius: '6px',
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </Box>
+                </Box>
+              );
+            })
+          )}
+        </Box>
       </Paper>
 
       {/* Edit Company Dialog Modal */}

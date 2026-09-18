@@ -84,22 +84,22 @@ export const BillPrintModal: React.FC<BillPrintModalProps> = ({ open, onClose, b
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            px: 3,
-            py: 1.8,
+            px: { xs: 1.5, sm: 3 },
+            py: 1.5,
             background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
             borderBottom: '2px solid #F59E0B',
             color: '#FFFFFF',
           }}
         >
-          <Box>
-            <Typography sx={{ fontSize: '16px', fontWeight: 800, letterSpacing: '-0.01em' }}>
+          <Box sx={{ minWidth: 0, mr: 1 }}>
+            <Typography noWrap sx={{ fontSize: { xs: '14px', sm: '16px' }, fontWeight: 800, letterSpacing: '-0.01em' }}>
               Bill Preview - #{bill.billNo || 'New'}
             </Typography>
-            <Typography sx={{ fontSize: '12px', color: '#FEF3C7', fontWeight: 500 }}>
+            <Typography noWrap sx={{ fontSize: '11px', color: '#FEF3C7', fontWeight: 500 }}>
               {bill.customerName} | {bill.companyName}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
             <Button
               variant="contained"
               disableElevation
@@ -109,20 +109,21 @@ export const BillPrintModal: React.FC<BillPrintModalProps> = ({ open, onClose, b
                 backgroundColor: '#FEF3C7',
                 color: '#7C2D12',
                 border: '1px solid #FDE68A',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 700,
                 textTransform: 'none',
-                px: 2,
-                py: 0.6,
+                px: { xs: 1.2, sm: 2 },
+                py: 0.5,
                 borderRadius: '6px',
+                whiteSpace: 'nowrap',
                 '&:hover': {
                   backgroundColor: '#FDE68A',
                 },
               }}
             >
-              Print Invoice
+              Print
             </Button>
-            <IconButton onClick={onClose} sx={{ color: '#FFFFFF', p: 0.8 }}>
+            <IconButton onClick={onClose} sx={{ color: '#FFFFFF', p: 0.6 }}>
               <CloseRoundedIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Box>
@@ -131,11 +132,13 @@ export const BillPrintModal: React.FC<BillPrintModalProps> = ({ open, onClose, b
         {/* Modal Body with Bill Document */}
         <DialogContent
           sx={{
-            p: { xs: 1.5, sm: 3 },
+            p: { xs: 1, sm: 3 },
             backgroundColor: '#FFFDF7',
             display: 'flex',
             justifyContent: 'center',
             overflowY: 'auto',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <Box
@@ -147,6 +150,8 @@ export const BillPrintModal: React.FC<BillPrintModalProps> = ({ open, onClose, b
               border: 'none',
               width: '100%',
               maxWidth: '820px',
+              minWidth: { xs: '320px', sm: 'auto' },
+              overflowX: 'auto',
             }}
           >
             <BillPrintTemplate bill={bill} />
@@ -157,8 +162,8 @@ export const BillPrintModal: React.FC<BillPrintModalProps> = ({ open, onClose, b
         <DialogActions
           className="dheeksha-no-print"
           sx={{
-            px: 3,
-            py: 1.5,
+            px: { xs: 1.5, sm: 3 },
+            py: 1.2,
             backgroundColor: '#FFFFFF',
             borderTop: '1px solid #FEF3C7',
             display: 'flex',

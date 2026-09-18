@@ -19,6 +19,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('All Customers');
   const [customerSubView, setCustomerSubView] = useState<'list' | 'add'>('list');
   const [selectedCustomerName, setSelectedCustomerName] = useState<string>('');
+  const [editingBill, setEditingBill] = useState<any | null>(null);
 
   useEffect(() => {
     // Clear legacy sticky customer if present
@@ -36,7 +37,13 @@ function App() {
       .then((res) => {
         const data = (res && typeof res === 'object' && 'data' in res && res.data) ? res.data : res;
         if (data && typeof data === 'object') {
-          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...data };
+          const sanitized: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(data)) {
+            if (v !== '' && v !== null && v !== undefined) {
+              sanitized[k] = v;
+            }
+          }
+          const remoteSettings = { ...DEFAULT_COMPANY_SETTINGS, ...sanitized };
           localStorage.setItem('dheeksha_app_settings', JSON.stringify(remoteSettings));
           window.dispatchEvent(new Event('dheeksha_settings_updated'));
           updateTitle();
@@ -74,8 +81,19 @@ function App() {
   };
 
   const handleCustomerSelectedForParticular = (customerName: string) => {
+    setEditingBill(null);
     setSelectedCustomerName(customerName);
     setActiveTab('Billing');
+  };
+
+  const handleEditBill = (bill: any) => {
+    setSelectedCustomerName('');
+    setEditingBill(bill);
+    setActiveTab('Billing');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBill(null);
   };
 
   if (!isAuthenticated) {
@@ -118,6 +136,7 @@ function App() {
                 <AllCustomersPage
                   onAddNewCustomer={() => setCustomerSubView('add')}
                   onSelectCustomerForParticular={handleCustomerSelectedForParticular}
+                  onEditBill={handleEditBill}
                 />
               )}
             </>
@@ -127,6 +146,8 @@ function App() {
           {activeTab === 'Billing' && (
             <ParticularsPage
               initialCustomerName={selectedCustomerName}
+              editingBill={editingBill}
+              onCancelEdit={handleCancelEdit}
             />
           )}
 

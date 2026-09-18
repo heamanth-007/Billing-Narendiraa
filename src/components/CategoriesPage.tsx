@@ -381,7 +381,8 @@ export const CategoriesPage: FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: 1.5,
-              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              flexWrap: 'wrap',
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             {/* Search Input */}
@@ -444,6 +445,7 @@ export const CategoriesPage: FC = () => {
                   height: '38px',
                   borderRadius: '8px',
                   whiteSpace: 'nowrap',
+                  flex: { xs: 1, sm: 'none' },
                   '&:hover': {
                     backgroundColor: 'rgba(239, 68, 68, 0.9)',
                     borderColor: '#EF4444',
@@ -472,6 +474,7 @@ export const CategoriesPage: FC = () => {
                 borderRadius: '8px',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
                 whiteSpace: 'nowrap',
+                width: { xs: '100%', sm: 'auto' },
                 '&:hover': {
                   backgroundColor: '#FFFBEB',
                 },
@@ -482,9 +485,9 @@ export const CategoriesPage: FC = () => {
           </Box>
         </Box>
 
-        {/* Categories Table */}
-        <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <Table sx={{ minWidth: { xs: '650px', sm: '100%' } }} aria-label="categories table">
+        {/* Desktop View: Categories Table */}
+        <TableContainer sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <Table sx={{ minWidth: 650 }} aria-label="categories table">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                 <TableCell
@@ -811,6 +814,130 @@ export const CategoriesPage: FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Mobile View: Category Cards */}
+        <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5, p: 1.5 }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+              <CircularProgress size={32} sx={{ color: '#DC2626' }} />
+            </Box>
+          ) : filteredCategories.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4, color: '#786C58' }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+                {searchTerm ? `No categories matching "${searchTerm}" found.` : 'No categories found.'}
+              </Typography>
+            </Box>
+          ) : (
+            filteredCategories.map((cat, index) => {
+              const catColor = cat.color || '#DC2626';
+              return (
+                <Paper
+                  key={cat._id || cat.id || index}
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: '10px',
+                    border: '1px solid #FDE68A',
+                    backgroundColor: '#FFFDF9',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                      <Box
+                        sx={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: '50%',
+                          backgroundColor: catColor,
+                          boxShadow: `0 0 6px ${catColor}80`,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Typography sx={{ fontSize: '14.5px', fontWeight: 700, color: '#1F1714' }}>
+                        {cat.name}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                      {cat.code && (
+                        <Chip
+                          label={cat.code}
+                          size="small"
+                          sx={{
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            backgroundColor: '#FFFBEB',
+                            color: '#92400E',
+                            border: '1px solid #FDE68A',
+                            borderRadius: '4px',
+                            height: '22px',
+                          }}
+                        />
+                      )}
+                      <Chip
+                        label={cat.isActive !== false ? 'Active' : 'Inactive'}
+                        size="small"
+                        sx={{
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          backgroundColor: cat.isActive !== false ? '#ECFDF5' : '#FEF2F2',
+                          color: cat.isActive !== false ? '#065F46' : '#991B1B',
+                          height: '22px',
+                        }}
+                      />
+                    </Box>
+                  </Box>
+
+                  {cat.description && (
+                    <Typography sx={{ fontSize: '12px', color: '#64748B', pl: 2.8 }}>
+                      {cat.description}
+                    </Typography>
+                  )}
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, pt: 0.6, borderTop: '1px solid #FEF3C7' }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleOpenEdit(cat)}
+                      startIcon={<ModeEditOutlineRoundedIcon sx={{ fontSize: 14 }} />}
+                      sx={{
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        color: '#D97706',
+                        borderColor: '#FDE68A',
+                        backgroundColor: '#FFFBEB',
+                        borderRadius: '6px',
+                        py: 0.3,
+                        px: 1,
+                      }}
+                    >
+                      Edit
+                    </Button>
+
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(cat)}
+                      sx={{
+                        color: '#DC2626',
+                        backgroundColor: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        borderRadius: '6px',
+                        p: 0.6,
+                        '&:hover': { color: '#FFFFFF', backgroundColor: '#DC2626' },
+                      }}
+                    >
+                      <DeleteOutlineRoundedIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Box>
+                </Paper>
+              );
+            })
+          )}
+        </Box>
       </Paper>
 
       {/* Add / Edit Category Dialog */}

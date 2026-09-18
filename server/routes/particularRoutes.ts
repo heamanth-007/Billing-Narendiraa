@@ -6,6 +6,7 @@ import {
   createParticular,
   updateParticular,
   deleteParticular,
+  clearAllParticulars,
   uploadParticularPdf,
   deleteParticularPdf,
 } from '../controllers/particularController';
@@ -16,6 +17,7 @@ const router = Router();
 router.route('/').get(getParticulars).post(createParticular);
 
 // Specific named routes (placed before generic :id)
+router.route('/clear/all').delete(clearAllParticulars);
 router.route('/next-bill-no').get(getNextBillNo);
 router.route('/:id/pdf').post(uploadParticularPdf).delete(deleteParticularPdf);
 

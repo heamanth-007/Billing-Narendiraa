@@ -52,6 +52,76 @@ export const isDateInRange = (dateStr: string, fromDateStr: string, toDateStr: s
   return true;
 };
 
+/**
+ * Converts a numerical currency amount to Indian English words.
+ * E.g., 4800 -> "Rupees Four Thousand Eight Hundred Only"
+ */
+export const numberToIndianWords = (amount: number): string => {
+  if (isNaN(amount) || amount === 0) return 'Rupees Zero Only';
+
+  const singleDigits = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const twoDigits = [
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+    'Sixteen',
+    'Seventeen',
+    'Eighteen',
+    'Nineteen',
+  ];
+  const tensMultiple = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const convertTwoDigits = (n: number): string => {
+    if (n === 0) return '';
+    if (n < 10) return singleDigits[n];
+    if (n >= 10 && n < 20) return twoDigits[n - 10];
+    const tens = Math.floor(n / 10);
+    const ones = n % 10;
+    return (tensMultiple[tens] + (ones > 0 ? ' ' + singleDigits[ones] : '')).trim();
+  };
+
+  const convertThreeDigits = (n: number): string => {
+    const hundred = Math.floor(n / 100);
+    const rest = n % 100;
+    let res = '';
+    if (hundred > 0) {
+      res += singleDigits[hundred] + ' Hundred';
+    }
+    if (rest > 0) {
+      if (res) res += ' and ';
+      res += convertTwoDigits(rest);
+    }
+    return res.trim();
+  };
+
+  const wholeNum = Math.floor(amount);
+  const paise = Math.round((amount - wholeNum) * 100);
+
+  const crore = Math.floor(wholeNum / 10000000);
+  const lakh = Math.floor((wholeNum % 10000000) / 100000);
+  const thousand = Math.floor((wholeNum % 100000) / 1000);
+  const remainder = wholeNum % 1000;
+
+  let words = '';
+  if (crore > 0) words += convertTwoDigits(crore) + ' Crore ';
+  if (lakh > 0) words += convertTwoDigits(lakh) + ' Lakh ';
+  if (thousand > 0) words += convertTwoDigits(thousand) + ' Thousand ';
+  if (remainder > 0) words += convertThreeDigits(remainder) + ' ';
+
+  words = words.trim();
+  let result = words ? 'Rupees ' + words : 'Rupees Zero';
+
+  if (paise > 0) {
+    result += ' and ' + convertTwoDigits(paise) + ' Paise';
+  }
+
+  result += ' Only';
+  return result;
+};
+
 export const generateBillHtml = (bill: BillPrintData): string => {
   // Calculate Subtotal from Products or bill.amount
   const prodSubtotal = (bill.products || []).reduce((acc, p) => {
@@ -116,6 +186,7 @@ export const generateBillHtml = (bill: BillPrintData): string => {
   const rawTotalNum = parseFloat(String(bill.total ?? bill.amount ?? '0').replace(/,/g, '')) || 0;
   const finalTotalNum = rawTotalNum > 0 ? rawTotalNum : calculatedTotal;
   const formattedTotal = '₹' + finalTotalNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const amountInWords = numberToIndianWords(finalTotalNum);
 
   const computedCases = bill.caseCount !== undefined && bill.caseCount !== ''
     ? bill.caseCount
@@ -127,26 +198,52 @@ export const generateBillHtml = (bill: BillPrintData): string => {
     bill.companyName.trim() !== '' &&
     bill.companyName !== 'General'
       ? bill.companyName
-      : storeSettings.companyName || 'General';
+      : storeSettings.companyName || 'NARENDIRAA ENTERPRISES';
 
   const isTaxActive = Boolean(storeSettings.enableTax) || (parseFloat(String(bill.tax || '0').replace(/[^0-9.]/g, '')) > 0);
   const receiptSrc = bill.pdfData || bill.pdfUrl || '';
-  const cityLine = `${storeSettings.city || 'Sivakasi'}${storeSettings.state ? `, ${storeSettings.state}` : ''}`;
-  const gstinLine = (isTaxActive && storeSettings.gstin) ? `GSTIN: ${storeSettings.gstin}` : '';
-  const phoneLine = storeSettings.phone ? `Mobile: ${storeSettings.phone}` : '';
-  const metaContact = [gstinLine, phoneLine].filter(Boolean).join(' | ');
+
+  // Construct complete address from store settings without repeating city
+  const city = storeSettings.city || 'Sivakasi';
+  let addr = storeSettings.address || '';
+  if (addr && addr.toLowerCase().endsWith(city.toLowerCase())) {
+    addr = addr.slice(0, -city.length).replace(/[,\s]+$/, '');
+  }
+  const fullAddressParts = [
+    addr,
+    city,
+    storeSettings.pincode ? `PIN: ${storeSettings.pincode}` : '',
+    storeSettings.state || 'Tamil Nadu',
+  ].filter(Boolean);
+  const fullAddressLine = fullAddressParts.join(', ');
+
+  // Construct contact details
+  const contactParts = [
+    storeSettings.phone ? `Phone: ${storeSettings.phone}` : '',
+    storeSettings.whatsapp ? `WhatsApp: ${storeSettings.whatsapp}` : '',
+    storeSettings.email ? `Email: ${storeSettings.email}` : '',
+  ].filter(Boolean);
+  const contactLine = contactParts.join(' | ');
+
+  // Construct legal & registration details
+  const legalParts = [
+    (isTaxActive && storeSettings.gstin) ? `GSTIN: ${storeSettings.gstin}` : '',
+    storeSettings.pan ? `PAN: ${storeSettings.pan}` : '',
+    storeSettings.ownerName ? `Proprietor: ${storeSettings.ownerName}` : '',
+  ].filter(Boolean);
+  const legalLine = legalParts.join(' | ');
 
   const productRowsHtml = (bill.products || []).map((item, idx) => {
     const numAmt = parseFloat(String(item.amount).replace(/,/g, '')) || 0;
     const numRate = parseFloat(String(item.rate).replace(/,/g, '')) || 0;
     return `
       <tr>
-        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: center;">${idx + 1}</td>
-        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: left; font-weight: 600;">${item.particular || '-'}</td>
-        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: center;">${item.quantity || '-'}</td>
-        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: right;">${numRate > 0 ? numRate.toFixed(2) : (item.rate || '-')}</td>
-        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: center;">${item.pktUnit && item.pktUnit !== '-' ? item.pktUnit : ''}</td>
-        <td style="border: 1px solid #000000; padding: 6px 8px; text-align: right; font-weight: 700;">${numAmt.toFixed(2)}</td>
+        <td style="border: 1px solid #000000; padding: 5px 6px; text-align: center;">${idx + 1}</td>
+        <td style="border: 1px solid #000000; padding: 5px 8px; text-align: left; font-weight: 600;">${item.particular || '-'}</td>
+        <td style="border: 1px solid #000000; padding: 5px 6px; text-align: center;">${item.quantity || '-'}</td>
+        <td style="border: 1px solid #000000; padding: 5px 8px; text-align: right;">${numRate > 0 ? numRate.toFixed(2) : (item.rate || '-')}</td>
+        <td style="border: 1px solid #000000; padding: 5px 6px; text-align: center;">${item.pktUnit && item.pktUnit !== '-' ? item.pktUnit : ''}</td>
+        <td style="border: 1px solid #000000; padding: 5px 8px; text-align: right; font-weight: 700;">${numAmt.toFixed(2)}</td>
       </tr>
     `;
   }).join('');
@@ -160,7 +257,7 @@ export const generateBillHtml = (bill: BillPrintData): string => {
   <style>
     @page {
       size: A4 portrait;
-      margin: 8mm 10mm;
+      margin: 6mm 8mm;
     }
     *, *:before, *:after {
       box-sizing: border-box;
@@ -176,30 +273,53 @@ export const generateBillHtml = (bill: BillPrintData): string => {
     }
     .bill-box-container {
       width: 100%;
+      max-width: 194mm;
+      margin: 0 auto;
       border: 1.5px solid #000000;
       background: #ffffff;
+      box-sizing: border-box;
+      page-break-inside: avoid;
     }
     .top-header {
       text-align: center;
-      padding: 12px 16px 10px 16px;
+      padding: 8px 12px 6px 12px;
       border-bottom: 1.5px solid #000000;
     }
+    .comp-tagline {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 2px;
+      letter-spacing: 0.02em;
+    }
+    .comp-logo {
+      max-height: 44px;
+      max-width: 150px;
+      object-fit: contain;
+      margin-bottom: 3px;
+    }
     .comp-name {
-      font-size: 26px;
+      font-size: 23px;
       font-weight: 800;
       color: #000000;
       margin-bottom: 2px;
       letter-spacing: -0.01em;
       text-transform: uppercase;
     }
-    .comp-city {
-      font-size: 13px;
+    .comp-address {
+      font-size: 12px;
       font-weight: 600;
       color: #1e293b;
     }
-    .comp-meta {
-      font-size: 11.5px;
+    .comp-contact {
+      font-size: 11px;
       font-weight: 600;
+      color: #334155;
+      margin-top: 2px;
+    }
+    .comp-legal {
+      font-size: 10.5px;
+      font-weight: 700;
       color: #475569;
       margin-top: 2px;
     }
@@ -207,17 +327,25 @@ export const generateBillHtml = (bill: BillPrintData): string => {
       width: 100%;
       border-collapse: collapse;
       border-bottom: 1.5px solid #000000;
-      font-size: 12.5px;
+      font-size: 12px;
     }
     .meta-table td {
       border: 1px solid #000000;
-      padding: 5px 10px;
-      vertical-align: middle;
+      padding: 5px 8px;
+      vertical-align: top;
+    }
+    .meta-row {
+      display: flex;
+      margin-bottom: 2px;
+    }
+    .meta-row:last-child {
+      margin-bottom: 0;
     }
     .meta-label {
       color: #475569;
-      font-weight: 500;
-      margin-right: 4px;
+      font-weight: 600;
+      min-width: 80px;
+      flex-shrink: 0;
     }
     .meta-val {
       font-weight: 700;
@@ -229,16 +357,23 @@ export const generateBillHtml = (bill: BillPrintData): string => {
       border-bottom: 1.5px solid #000000;
       font-size: 12px;
     }
+    .prod-table thead {
+      display: table-header-group;
+    }
+    .prod-table tr {
+      page-break-inside: avoid;
+    }
     .prod-table th {
       border: 1px solid #000000;
       padding: 6px 8px;
       font-weight: 700;
-      background-color: #f8fafc;
+      background-color: #f1f5f9;
       color: #000000;
+      font-size: 11.5px;
     }
     .prod-table td {
       border: 1px solid #000000;
-      padding: 6px 8px;
+      padding: 5px 8px;
     }
     .bottom-section {
       width: 100%;
@@ -246,62 +381,90 @@ export const generateBillHtml = (bill: BillPrintData): string => {
       justify-content: space-between;
       align-items: stretch;
       page-break-inside: avoid;
+      background-color: #ffffff;
     }
-    .left-receipt-area {
-      flex: 1 1 50%;
+    .left-info-area {
+      flex: 1 1 54%;
       border-right: 1.5px solid #000000;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      min-height: 140px;
-    }
-    .left-sign-area {
-      flex: 1 1 50%;
-      border-right: 1.5px solid #000000;
-      padding: 12px 16px;
+      padding: 8px 10px;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
+      justify-content: space-between;
       box-sizing: border-box;
-      min-height: 140px;
+    }
+    .words-box {
+      font-size: 11.5px;
+      color: #0f172a;
+      line-height: 1.35;
+      padding: 4px 6px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      margin-bottom: 6px;
     }
     .receipt-img {
       max-width: 100%;
-      max-height: 180px;
+      max-height: 130px;
       object-fit: contain;
       display: block;
+      margin: 4px auto;
+    }
+    .terms-box {
+      font-size: 10px;
+      color: #64748b;
+      line-height: 1.3;
+      margin-top: 4px;
     }
     .summary-area {
-      flex: 1 1 50%;
+      flex: 1 1 46%;
       padding: 0;
       box-sizing: border-box;
     }
     .summary-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12.5px;
+      font-size: 12px;
     }
     .summary-table td {
       border: 1px solid #000000;
-      padding: 5px 10px;
+      padding: 4.5px 8px;
     }
     .summary-label-cell {
-      font-weight: 500;
+      font-weight: 600;
       color: #334155;
     }
     .summary-val-cell {
       text-align: right;
-      font-weight: 600;
+      font-weight: 700;
       color: #000000;
     }
     .summary-total-row td {
       font-weight: 800;
-      font-size: 13.5px;
-      padding: 7px 10px;
-      background-color: #f8fafc;
+      font-size: 13px;
+      padding: 6px 8px;
+      background-color: #f1f5f9;
       border-top: 1.5px solid #000000;
+    }
+    .sign-bar {
+      border-top: 1.5px solid #000000;
+      padding: 6px 12px 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      page-break-inside: avoid;
+      background: #ffffff;
+    }
+    .sign-col {
+      text-align: center;
+    }
+    .sign-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #000000;
+      border-top: 1px dashed #000000;
+      padding-top: 3px;
+      display: inline-block;
+      min-width: 150px;
     }
   </style>
 </head>
@@ -309,46 +472,57 @@ export const generateBillHtml = (bill: BillPrintData): string => {
   <div class="bill-box-container">
     <!-- Header -->
     <div class="top-header">
+      ${storeSettings.tagline ? `<div class="comp-tagline">${storeSettings.tagline}</div>` : ''}
       ${
         storeSettings.logoUrl
-          ? `<div style="margin-bottom:4px;"><img src="${storeSettings.logoUrl}" alt="Logo" style="max-height:48px; max-width:150px; object-fit:contain;" /></div>`
+          ? `<div style="margin-bottom:3px;"><img class="comp-logo" src="${storeSettings.logoUrl}" alt="Logo" /></div>`
           : ''
       }
       <div class="comp-name">${displayCompanyName}</div>
-      <div class="comp-city">${cityLine}</div>
-      ${metaContact ? `<div class="comp-meta">${metaContact}</div>` : ''}
+      ${fullAddressLine ? `<div class="comp-address">${fullAddressLine}</div>` : ''}
+      ${contactLine ? `<div class="comp-contact">${contactLine}</div>` : ''}
+      ${legalLine ? `<div class="comp-legal">${legalLine}</div>` : ''}
     </div>
 
-    <!-- Metadata Grid Table with Boxed Lines -->
+    <!-- Metadata Grid Table: Balanced 2 Columns -->
     <table class="meta-table">
       <tr>
         <td style="width: 50%;">
-          <span class="meta-label">Bill No:</span>
-          <span class="meta-val">${bill.billNo || '-'}</span>
+          <div class="meta-row">
+            <span class="meta-label">Customer:</span>
+            <span class="meta-val" style="font-size: 13px;">${bill.customerName || '-'}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Address:</span>
+            <span style="font-size: 11.5px; color: #1e293b;">${bill.customerAddress && bill.customerAddress !== '-' ? bill.customerAddress : '-'}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Phone:</span>
+            <span class="meta-val">${bill.customerPhone && bill.customerPhone !== '-' ? bill.customerPhone : '-'}</span>
+          </div>
+          ${
+            bill.customerGst && bill.customerGst !== '-' && bill.customerGst !== 'N/A'
+              ? `<div class="meta-row"><span class="meta-label">GSTIN:</span> <span class="meta-val">${bill.customerGst}</span></div>`
+              : ''
+          }
         </td>
         <td style="width: 50%;">
-          <span class="meta-label">Date:</span>
-          <span class="meta-val">${bill.date || '-'}</span>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="meta-label">Customer Name:</span>
-          <span class="meta-val">${bill.customerName || '-'}</span>
-        </td>
-        <td>
-          <span class="meta-label">Company Name:</span>
-          <span class="meta-val">${displayCompanyName}</span>
-        </td>
-      </tr>
-      <tr>
-        <td>
-          <span class="meta-label">Transport:</span>
-          <span class="meta-val">${transportDisplayName}</span>
-        </td>
-        <td>
-          <span class="meta-label">Total No. of Cases:</span>
-          <span class="meta-val">${computedCases}</span>
+          <div class="meta-row">
+            <span class="meta-label">Bill No:</span>
+            <span class="meta-val">#${bill.billNo || '-'}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Date:</span>
+            <span class="meta-val">${bill.date || '-'}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Transport:</span>
+            <span class="meta-val">${transportDisplayName}</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Total Cases:</span>
+            <span class="meta-val">${computedCases}</span>
+          </div>
         </td>
       </tr>
     </table>
@@ -357,39 +531,41 @@ export const generateBillHtml = (bill: BillPrintData): string => {
     <table class="prod-table">
       <thead>
         <tr>
-          <th style="width: 45px; text-align: center;">Si.No</th>
-          <th style="text-align: left;">Particular</th>
-          <th style="width: 75px; text-align: center;">Quantity</th>
-          <th style="width: 85px; text-align: right;">Rate (₹)</th>
-          <th style="width: 85px; text-align: center;">Pkt / Unit</th>
-          <th style="width: 105px; text-align: right;">Amount (₹)</th>
+          <th style="width: 38px; text-align: center;">S.No</th>
+          <th style="text-align: left;">Particulars / Description of Goods</th>
+          <th style="width: 65px; text-align: center;">Quantity</th>
+          <th style="width: 75px; text-align: right;">Rate (₹)</th>
+          <th style="width: 65px; text-align: center;">Unit</th>
+          <th style="width: 95px; text-align: right;">Amount (₹)</th>
         </tr>
       </thead>
       <tbody>
-        ${productRowsHtml || '<tr><td colspan="6" style="text-align:center; padding:14px; border:1px solid #000;">No product items</td></tr>'}
+        ${productRowsHtml || '<tr><td colspan="6" style="text-align:center; padding:12px; border:1px solid #000;">No product items</td></tr>'}
       </tbody>
     </table>
 
-    <!-- Bottom Section: Receipt or Signatory Box on Left & Summary Box on Right -->
+    <!-- Bottom Split Section -->
     <div class="bottom-section">
-      ${
-        receiptSrc
-          ? `
-          <div class="left-receipt-area">
-            <img src="${receiptSrc}" class="receipt-img" alt="Transport Receipt" />
+      <!-- Left Column: Amount in Words, Receipt & Terms -->
+      <div class="left-info-area">
+        <div>
+          <div class="words-box">
+            <span style="font-weight: 700; color: #475569;">Amount in Words:</span><br />
+            <strong>${amountInWords}</strong>
           </div>
-          `
-          : `
-          <div class="left-sign-area">
-            <div style="font-size: 11px; color: #64748B; margin-bottom: 24px;">Thank you for your business!</div>
-            <div style="font-size: 11.5px; font-weight: 700; color: #000000; border-top: 1px dashed #000000; display: inline-block; padding-top: 4px; width: 170px;">
-              Authorized Signatory
-            </div>
-          </div>
-          `
-      }
+          ${
+            receiptSrc
+              ? `<img src="${receiptSrc}" class="receipt-img" alt="Transport Receipt" />`
+              : ''
+          }
+        </div>
+        <div class="terms-box">
+          • Goods once sold will not be taken back or replaced.<br />
+          • All disputes are subject to Sivakasi Jurisdiction only.
+        </div>
+      </div>
 
-      <!-- Right Column: Summary Table -->
+      <!-- Right Column: Charges Summary Table -->
       <div class="summary-area">
         <table class="summary-table">
           <tbody>
@@ -430,11 +606,22 @@ export const generateBillHtml = (bill: BillPrintData): string => {
                 : ''
             }
             <tr class="summary-total-row">
-              <td>Total Amount</td>
+              <td>Grand Total</td>
               <td class="summary-val-cell">${formattedTotal}</td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Signatory Bar -->
+    <div class="sign-bar">
+      <div class="sign-col" style="text-align: left;">
+        <span class="sign-label" style="text-align: left; min-width: 120px;">Customer's Signature</span>
+      </div>
+      <div class="sign-col" style="text-align: right;">
+        <div style="font-size: 11px; font-weight: 700; margin-bottom: 24px;">For ${displayCompanyName}</div>
+        <span class="sign-label">Authorized Signatory</span>
       </div>
     </div>
   </div>

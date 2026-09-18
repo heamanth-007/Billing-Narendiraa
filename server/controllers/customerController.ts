@@ -175,20 +175,39 @@ export const deleteCustomer = async (req: Request, res: Response, next: NextFunc
     const customerName = customer.name;
     const escapedName = escapeRegex(customerName.trim());
 
-    // 1. Delete customer
-    await Customer.findByIdAndDelete(req.params.id);
+    const { Particular } = await import('../models/Particular');
+    const { AccountLedger } = await import('../models/AccountLedger');
+    const { isCloudinaryConfigured, deleteFromCloudinary } = await import('../config/cloudinary');
+
+    // 1. Delete associated Cloudinary assets for this customer's particulars
+    const particularsToDelete = await Particular.find({
+      customerName: { $regex: new RegExp(`^${escapedName}$`, 'i') },
+    });
+
+    if (isCloudinaryConfigured()) {
+      for (const p of particularsToDelete) {
+        if (p.pdfPublicId) {
+          try {
+            await deleteFromCloudinary(p.pdfPublicId);
+          } catch (cloudErr) {
+            console.warn('[Cloudinary Warning] Failed to delete customer bill asset:', cloudErr);
+          }
+        }
+      }
+    }
 
     // 2. Cascade Delete: Delete all Particulars for this customer
-    const { Particular } = await import('../models/Particular');
     await Particular.deleteMany({
       customerName: { $regex: new RegExp(`^${escapedName}$`, 'i') },
     });
 
     // 3. Cascade Delete: Delete all AccountLedger entries for this customer
-    const { AccountLedger } = await import('../models/AccountLedger');
     await AccountLedger.deleteMany({
       customerName: { $regex: new RegExp(`^${escapedName}$`, 'i') },
     });
+
+    // 4. Delete customer
+    await Customer.findByIdAndDelete(req.params.id);
 
     res.status(200).json({ success: true, data: {} });
   } catch (error) {

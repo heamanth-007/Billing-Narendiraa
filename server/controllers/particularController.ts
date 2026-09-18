@@ -423,24 +423,71 @@ export const deleteParticular = async (req: Request, res: Response, next: NextFu
 
     // 1. Delete associated Cloudinary asset if present
     if (particular.pdfPublicId && isCloudinaryConfigured()) {
-      await deleteFromCloudinary(particular.pdfPublicId);
+      try {
+        await deleteFromCloudinary(particular.pdfPublicId);
+      } catch (cloudErr) {
+        console.warn('[Cloudinary Warning] Failed to delete asset during bill delete:', cloudErr);
+      }
     }
 
     // 2. Delete Particular Document
     await Particular.findByIdAndDelete(req.params.id);
 
     // 3. Cascade Delete: Delete matching AccountLedger entries (BILL and PAYMENT)
-    await AccountLedger.deleteMany({
-      $or: [
-        { particularId: String(req.params.id) },
-        { particularId: String(particular._id) },
-      ],
-    });
+    const ledgerFilter: any[] = [
+      { particularId: String(req.params.id) },
+      { particularId: String(particular._id) },
+    ];
+    if (particular.billNo && particular.billNo.trim() !== '') {
+      ledgerFilter.push({ billNo: particular.billNo.trim() });
+    }
+    await AccountLedger.deleteMany({ $or: ledgerFilter });
 
     // 4. Recalculate balance for this customer
-    await recalculateCustomerBalance(customerName);
+    if (customerName) {
+      await recalculateCustomerBalance(customerName);
+    }
 
     res.status(200).json({ success: true, data: {} });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearAllParticulars = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const allParticulars = await Particular.find();
+
+    // 1. Delete all Cloudinary assets if configured
+    if (isCloudinaryConfigured()) {
+      for (const p of allParticulars) {
+        if (p.pdfPublicId) {
+          try {
+            await deleteFromCloudinary(p.pdfPublicId);
+          } catch (e) {
+            console.warn('[Cloudinary Cleanup Warning]:', e);
+          }
+        }
+      }
+    }
+
+    // 2. Delete all particulars
+    const delRes = await Particular.deleteMany({});
+
+    // 3. Delete all ledger entries of type BILL and associated payments
+    await AccountLedger.deleteMany({ type: 'BILL' });
+
+    // 4. Recalculate balance for all customers
+    const allCustomers = await Customer.find();
+    for (const c of allCustomers) {
+      await recalculateCustomerBalance(c.name);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully cleared all ${delRes.deletedCount} bills and synchronized accounts. Next Bill No is reset to 0001.`,
+      nextBillNo: '0001',
+    });
   } catch (error) {
     next(error);
   }

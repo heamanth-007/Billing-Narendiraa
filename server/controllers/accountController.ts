@@ -54,22 +54,50 @@ export const deleteAccountEntry = async (req: Request, res: Response, next: Next
 
     // If this entry was created from a particular bill, delete the corresponding particular bill as well
     const { Particular } = await import('../models/Particular');
+    const { isCloudinaryConfigured, deleteFromCloudinary } = await import('../config/cloudinary');
+
+    let particularToDelete: any = null;
     if (entry.particularId) {
-      await Particular.findByIdAndDelete(entry.particularId);
+      particularToDelete = await Particular.findById(entry.particularId);
     } else if (entry.billNo && entry.billNo.trim() !== '') {
-      await Particular.findOneAndDelete({ billNo: entry.billNo.trim() });
+      particularToDelete = await Particular.findOne({ billNo: entry.billNo.trim() });
     } else if (entry.type === 'BILL') {
-      await Particular.findOneAndDelete({
+      particularToDelete = await Particular.findOne({
         customerName: { $regex: new RegExp(`^${escapeRegex(entry.customerName.trim())}$`, 'i') },
         companyName: { $regex: new RegExp(`^${escapeRegex(entry.companyName.trim())}$`, 'i') },
         date: entry.date,
       });
     }
 
+    if (particularToDelete) {
+      // 1. Delete Cloudinary asset if present
+      if (particularToDelete.pdfPublicId && isCloudinaryConfigured()) {
+        try {
+          await deleteFromCloudinary(particularToDelete.pdfPublicId);
+        } catch (cloudErr) {
+          console.warn('[Cloudinary Warning] Failed to delete asset during ledger delete:', cloudErr);
+        }
+      }
+
+      // 2. Delete the Particular document
+      await Particular.findByIdAndDelete(particularToDelete._id);
+
+      // 3. Delete all other ledger entries associated with this particular
+      await AccountLedger.deleteMany({
+        $or: [
+          { particularId: String(particularToDelete._id) },
+          ...(particularToDelete.billNo ? [{ billNo: particularToDelete.billNo }] : []),
+        ],
+      });
+    }
+
+    // Delete the target entry itself if not already deleted
     await AccountLedger.findByIdAndDelete(req.params.id);
 
     // Recalculate running balances for this customer
-    await recalculateCustomerBalance(customerName);
+    if (customerName) {
+      await recalculateCustomerBalance(customerName);
+    }
 
     res.status(200).json({ success: true, data: {} });
   } catch (error) {

@@ -309,9 +309,10 @@ export const ProductsPage: FC = () => {
           <Box
             sx={{
               display: 'flex',
-              alignItems: 'center',
+              alignItems: { xs: 'stretch', sm: 'center' },
               gap: 1.5,
-              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              flexDirection: { xs: 'column', sm: 'row' },
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             {/* Search Box */}
@@ -356,70 +357,76 @@ export const ProductsPage: FC = () => {
               )}
             </Box>
 
-            {/* Print Products List Button */}
-            <Button
-              variant="contained"
-              disableElevation
-              onClick={() => printProductsListDirectly(filteredProducts)}
-              startIcon={<PrintOutlinedIcon sx={{ fontSize: 18 }} />}
-              sx={{
-                backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                color: '#FFFFFF',
-                border: '1px solid rgba(254, 240, 138, 0.4)',
-                fontSize: '13px',
-                fontWeight: 700,
-                textTransform: 'none',
-                px: 1.8,
-                height: '38px',
-                borderRadius: '8px',
-                whiteSpace: 'nowrap',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                },
-              }}
-            >
-              Print List
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+              {/* Print Products List Button */}
+              <Button
+                variant="contained"
+                disableElevation
+                onClick={() => printProductsListDirectly(filteredProducts)}
+                startIcon={<PrintOutlinedIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                  color: '#FFFFFF',
+                  border: '1px solid rgba(254, 240, 138, 0.4)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  px: 1.8,
+                  height: '38px',
+                  flex: { xs: 1, sm: 'initial' },
+                  borderRadius: '8px',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                  },
+                }}
+              >
+                Print List
+              </Button>
 
-            {/* Add Product Button */}
-            <Button
-              variant="contained"
-              disableElevation
-              onClick={handleOpenAdd}
-              startIcon={<AddRoundedIcon sx={{ fontSize: 18 }} />}
-              sx={{
-                backgroundColor: '#FFFFFF',
-                color: '#B91C1C',
-                border: '1.5px solid #FDE68A',
-                fontSize: '13px',
-                fontWeight: 800,
-                textTransform: 'none',
-                px: 2,
-                height: '38px',
-                borderRadius: '8px',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                whiteSpace: 'nowrap',
-                '&:hover': {
-                  backgroundColor: '#FFFBEB',
-                },
-              }}
-            >
-              Add Product
-            </Button>
+              {/* Add Product Button */}
+              <Button
+                variant="contained"
+                disableElevation
+                onClick={handleOpenAdd}
+                startIcon={<AddRoundedIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  backgroundColor: '#FFFFFF',
+                  color: '#B91C1C',
+                  border: '1.5px solid #FDE68A',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  textTransform: 'none',
+                  px: 2,
+                  height: '38px',
+                  flex: { xs: 1, sm: 'initial' },
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    backgroundColor: '#FFFBEB',
+                  },
+                }}
+              >
+                Add Product
+              </Button>
+            </Box>
           </Box>
         </Box>
 
         {/* Category Pills Filter */}
         <Box
+          className="touch-scroll"
           sx={{
             p: 1.2,
-            px: { xs: 2, sm: 3 },
+            px: { xs: 1.5, sm: 3 },
             backgroundColor: '#FFFDF7',
             borderBottom: '1px solid #FDE68A',
             display: 'flex',
             alignItems: 'center',
             gap: 1,
             overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
           }}
@@ -470,9 +477,17 @@ export const ProductsPage: FC = () => {
           })}
         </Box>
 
-        {/* Table Container */}
-        <TableContainer sx={{ height: { xs: 'auto', md: 'calc(100vh - 185px)' }, maxHeight: { xs: '550px', md: 'calc(100vh - 185px)' }, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <Table stickyHeader sx={{ minWidth: { xs: '650px', sm: '100%' } }} aria-label="product table">
+        {/* Desktop Table View */}
+        <TableContainer
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            height: { xs: 'auto', md: 'calc(100vh - 185px)' },
+            maxHeight: { xs: '550px', md: 'calc(100vh - 185px)' },
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          <Table stickyHeader sx={{ minWidth: '100%' }} aria-label="product table">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                 <TableCell
@@ -549,7 +564,7 @@ export const ProductsPage: FC = () => {
                     width: '120px',
                   }}
                 >
-                  MRP (₹)
+                  85% DISCOUNT (₹)
                 </TableCell>
                 <TableCell
                   align="right"
@@ -797,6 +812,158 @@ export const ProductsPage: FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        {/* Mobile Product Cards View */}
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            flexDirection: 'column',
+            gap: 1.5,
+            p: { xs: 1.5, sm: 2 },
+            maxHeight: 'calc(100vh - 220px)',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {loading ? (
+            <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress size={32} sx={{ color: '#DC2626' }} />
+            </Box>
+          ) : filteredProducts.length === 0 ? (
+            <Box sx={{ py: 5, textAlign: 'center', color: '#786C58' }}>
+              <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+                {searchTerm ? `No products matching "${searchTerm}" found.` : 'No products found.'}
+              </Typography>
+            </Box>
+          ) : (
+            filteredProducts.map((product, index) => (
+              <Box
+                key={product._id || product.id || index}
+                sx={{
+                  p: 1.5,
+                  borderRadius: '10px',
+                  border: '1.5px solid #FDE68A',
+                  backgroundColor: '#FFFFFF',
+                  boxShadow: '0 2px 6px rgba(217, 119, 6, 0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                }}
+              >
+                {/* Card Header */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                    <Box
+                      sx={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: '6px',
+                        backgroundColor: '#FFFBEB',
+                        border: '1px solid #FDE68A',
+                        color: '#B45309',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {product.slNo || index + 1}
+                    </Box>
+                    <Typography sx={{ fontSize: '14px', fontWeight: 800, color: '#1F1714', lineHeight: 1.3 }}>
+                      {product.name}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={product.category || 'General'}
+                    size="small"
+                    sx={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: '#FFFBEB',
+                      color: '#92400E',
+                      border: '1px solid #FDE68A',
+                      height: '22px',
+                    }}
+                  />
+                </Box>
+
+                {/* Card Details Grid */}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 1,
+                    p: 1,
+                    borderRadius: '8px',
+                    backgroundColor: '#FFFDF7',
+                    border: '1px solid #FEF3C7',
+                  }}
+                >
+                  <Box>
+                    <Typography sx={{ fontSize: '10.5px', fontWeight: 700, color: '#92400E' }}>UNIT</Typography>
+                    <Typography sx={{ fontSize: '12.5px', fontWeight: 700, color: '#374151' }}>
+                      {product.unit || 'Box'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: '10.5px', fontWeight: 700, color: '#92400E' }}>85% DISC</Typography>
+                    <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#6B7280' }}>
+                      {product.mrp ? `₹${Number(product.mrp).toLocaleString('en-IN')}` : '—'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography sx={{ fontSize: '10.5px', fontWeight: 700, color: '#B91C1C' }}>RATE</Typography>
+                    <Typography sx={{ fontSize: '13.5px', fontWeight: 800, color: '#DC2626' }}>
+                      ₹{Number(product.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Card Actions */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, pt: 0.5 }}>
+                  <Button
+                    size="small"
+                    onClick={() => handleOpenEdit(product)}
+                    startIcon={<ModeEditOutlineRoundedIcon sx={{ fontSize: 15 }} />}
+                    sx={{
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      color: '#B45309',
+                      backgroundColor: '#FFFBEB',
+                      border: '1px solid #FDE68A',
+                      textTransform: 'none',
+                      py: 0.4,
+                      px: 1.5,
+                      borderRadius: '6px',
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => handleDeleteProduct(product)}
+                    startIcon={<DeleteOutlineRoundedIcon sx={{ fontSize: 15 }} />}
+                    sx={{
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      color: '#DC2626',
+                      backgroundColor: '#FEF2F2',
+                      border: '1px solid #FECACA',
+                      textTransform: 'none',
+                      py: 0.4,
+                      px: 1.5,
+                      borderRadius: '6px',
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
+            ))
+          )}
+        </Box>
       </Paper>
 
       {/* Add / Edit Product Modal */}
@@ -875,7 +1042,7 @@ export const ProductsPage: FC = () => {
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
-                MRP (₹)
+                85% Discount (₹)
               </Typography>
               <TextField
                 fullWidth

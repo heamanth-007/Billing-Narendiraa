@@ -42,16 +42,16 @@ export interface CompanySettings {
 }
 
 export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
-  companyName: '',
-  tagline: '',
+  companyName: 'NARENDIRAA ENTERPRISES',
+  tagline: 'ஸ்ரீ கருப்பசாமி துணை',
   ownerName: '',
-  phone: '',
-  whatsapp: '',
-  email: '',
-  address: '',
-  city: '',
-  pincode: '',
-  state: '',
+  phone: '99438 83839',
+  whatsapp: '95859 75756, 96269 97374',
+  email: 'narendiraapyrotech@gmail.com',
+  address: 'Sattur Road, Paraipatti',
+  city: 'Sivakasi',
+  pincode: '626189',
+  state: 'Tamil Nadu',
   gstin: '',
   pan: '',
   logoUrl: '',
@@ -137,7 +137,14 @@ export const getStoredSettings = (): CompanySettings => {
   try {
     const saved = localStorage.getItem('dheeksha_app_settings');
     if (saved) {
-      return { ...DEFAULT_COMPANY_SETTINGS, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      const sanitized: Partial<CompanySettings> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v !== '' && v !== null && v !== undefined) {
+          (sanitized as Record<string, unknown>)[k] = v;
+        }
+      }
+      return { ...DEFAULT_COMPANY_SETTINGS, ...sanitized };
     }
   } catch (err) {
     console.error('Failed to parse settings from localStorage:', err);
@@ -422,7 +429,7 @@ export const SettingsPage: React.FC = () => {
           </Box>
 
           {/* Actions */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'stretch', sm: 'flex-end' } }}>
             <Button
               variant="outlined"
               onClick={handleResetToDefault}
@@ -436,13 +443,15 @@ export const SettingsPage: React.FC = () => {
                 textTransform: 'none',
                 px: 2,
                 height: '36px',
+                flex: { xs: 1, sm: 'initial' },
+                whiteSpace: 'nowrap',
                 '&:hover': {
                   borderColor: '#FEF08A',
                   backgroundColor: 'rgba(255, 255, 255, 0.12)',
                 },
               }}
             >
-              Reset to Default
+              Reset
             </Button>
 
             <Button
@@ -461,6 +470,8 @@ export const SettingsPage: React.FC = () => {
                 textTransform: 'none',
                 px: 2.5,
                 height: '36px',
+                flex: { xs: 1, sm: 'initial' },
+                whiteSpace: 'nowrap',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
                 '&:hover': {
                   backgroundColor: '#FFFBEB',

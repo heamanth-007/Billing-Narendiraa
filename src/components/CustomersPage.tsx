@@ -168,6 +168,8 @@ export const CustomersPage: FC<CustomersPageProps> = ({ onAddNew, onSelectCustom
       if (deletedCust && localStorage.getItem('dheeksha_active_customer') === deletedCust.name) {
         localStorage.removeItem('dheeksha_active_customer');
       }
+      window.dispatchEvent(new Event('dheeksha_bills_updated'));
+      window.dispatchEvent(new Event('dheeksha_customers_updated'));
     } catch (err) {
       console.error('Failed to delete customer:', err);
       alert('Error deleting customer');

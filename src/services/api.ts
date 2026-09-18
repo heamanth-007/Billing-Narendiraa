@@ -143,6 +143,7 @@ export const ParticularsApi = {
   create: (data: any) => request<any>('/particulars', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: any) => request<any>(`/particulars/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => request<any>(`/particulars/${id}`, { method: 'DELETE' }),
+  clearAll: () => request<any>('/particulars/clear/all', { method: 'DELETE' }),
   uploadPdf: (id: string, pdfData: string, pdfName: string) =>
     request<any>(`/particulars/${id}/pdf`, {
       method: 'POST',

@@ -24,6 +24,7 @@ import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import ClearRoundedIcon from '@mui/icons-material/ClearRounded';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import {
   CustomersApi,
   CompaniesApi,
@@ -55,12 +56,17 @@ interface ProductCatalogOption {
 
 interface ParticularsPageProps {
   initialCustomerName?: string;
+  editingBill?: any | null;
+  onCancelEdit?: () => void;
 }
 
 const DRAFT_BILL_STORAGE_KEY = 'dheeksha_draft_bill';
 
 interface DraftBillState {
   customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  customerGst?: string;
   billNo?: string;
   billDate?: string;
   discount?: string;
@@ -82,49 +88,123 @@ const getSavedDraft = (): DraftBillState => {
   return {};
 };
 
-export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName }) => {
+export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName, editingBill, onCancelEdit }) => {
   const [storeSettings, setStoreSettings] = useState(() => getStoredSettings());
-  const draft = useMemo(() => getSavedDraft(), []);
+  const [draft] = useState<DraftBillState>(() => getSavedDraft());
+  const [editingBillId, setEditingBillId] = useState<string | null>(() => {
+    if (editingBill) return editingBill._id || editingBill.id || null;
+    return null;
+  });
 
   // Dropdown options
-  const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string }[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<{ id: string; name: string; phone?: string; address?: string; gst?: string }[]>([]);
   const [, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [productOptions, setProductOptions] = useState<ProductCatalogOption[]>([]);
 
   // Bill Form State (Restores from Draft if page was refreshed)
   const [customerName, setCustomerName] = useState<string>(() => {
+    if (editingBill) return editingBill.customerName || '';
     return initialCustomerName || draft.customerName || '';
   });
+  const [customerPhone, setCustomerPhone] = useState<string>(() => {
+    if (editingBill) return editingBill.customerPhone || '';
+    return draft.customerPhone || '';
+  });
+  const [customerAddress, setCustomerAddress] = useState<string>(() => {
+    if (editingBill) return editingBill.customerAddress || '';
+    return draft.customerAddress || '';
+  });
+  const [customerGst, setCustomerGst] = useState<string>(() => {
+    if (editingBill) return editingBill.customerGst || '';
+    return draft.customerGst || '';
+  });
   const [company, setCompany] = useState<string>(() => {
+    if (editingBill) return editingBill.companyName || storeSettings.companyName || 'General';
     return storeSettings.companyName || 'General';
   });
-  const [billNo, setBillNo] = useState<string>(() => draft.billNo || '');
+  const [billNo, setBillNo] = useState<string>(() => {
+    if (editingBill) return editingBill.billNo || '';
+    return '';
+  });
   const [billDate, setBillDate] = useState<string>(() => {
+    if (editingBill) return editingBill.date || '';
     if (draft.billDate) return draft.billDate;
     const today = new Date();
     return today.toLocaleDateString('en-GB').replace(/\//g, '-');
   });
-  const [discount, setDiscount] = useState<string>(() => draft.discount ?? '0');
-  const [transport, setTransport] = useState<string>(() => draft.transport ?? '0');
-  const [packing, setPacking] = useState<string>(() => draft.packing ?? '0');
-  const [tax, setTax] = useState<string>(() => draft.tax ?? '0');
+  const [discount, setDiscount] = useState<string>(() => {
+    if (editingBill) return String(editingBill.discount ?? '0');
+    return draft.discount ?? '0';
+  });
+  const [transport, setTransport] = useState<string>(() => {
+    if (editingBill) return String(editingBill.transport ?? '0');
+    return draft.transport ?? '0';
+  });
+  const [packing, setPacking] = useState<string>(() => {
+    if (editingBill) return String(editingBill.packing ?? '0');
+    return draft.packing ?? '0';
+  });
+  const [tax, setTax] = useState<string>(() => {
+    if (editingBill) return String(editingBill.tax ?? '0');
+    return draft.tax ?? '0';
+  });
 
   // Product Entry Form State
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [quantity, setQuantity] = useState<string>('1');
   const [rate, setRate] = useState<string>('0');
   const [unit, setUnit] = useState<string>('Box');
-  const [productRows, setProductRows] = useState<ProductRowItem[]>(() => draft.productRows || []);
+  const [productRows, setProductRows] = useState<ProductRowItem[]>(() => {
+    if (editingBill && Array.isArray(editingBill.products)) {
+      return editingBill.products.map((p: any, idx: number) => ({
+        id: `row-${idx}-${Date.now()}`,
+        particular: p.particular || p.name || '',
+        quantity: String(p.quantity || '1'),
+        rate: String(p.rate || '0'),
+        pktUnit: p.pktUnit || 'Box',
+        amount: String(p.amount || (Number(p.quantity || 1) * Number(p.rate || 0)).toFixed(2)),
+      }));
+    }
+    return draft.productRows || [];
+  });
   const [savingBill, setSavingBill] = useState<boolean>(false);
 
   // Print Preview Modal State
   const [printModalOpen, setPrintModalOpen] = useState<boolean>(false);
   const [selectedBillForPrint, setSelectedBillForPrint] = useState<BillPrintData | null>(null);
 
+  // Load editingBill if prop updates dynamically
+  useEffect(() => {
+    if (editingBill) {
+      setEditingBillId(editingBill._id || editingBill.id || null);
+      setCustomerName(editingBill.customerName || '');
+      setCustomerPhone(editingBill.customerPhone || '');
+      setCustomerAddress(editingBill.customerAddress || '');
+      setCompany(editingBill.companyName || storeSettings.companyName || 'General');
+      setBillNo(editingBill.billNo || '');
+      setBillDate(editingBill.date || '');
+      setDiscount(String(editingBill.discount ?? '0'));
+      setTransport(String(editingBill.transport ?? '0'));
+      setPacking(String(editingBill.packing ?? '0'));
+      setTax(String(editingBill.tax ?? '0'));
+      setProductRows((editingBill.products || []).map((p: any, idx: number) => ({
+        id: `row-${idx}-${Date.now()}`,
+        particular: p.particular || p.name || '',
+        quantity: String(p.quantity || '1'),
+        rate: String(p.rate || '0'),
+        pktUnit: p.pktUnit || 'Box',
+        amount: String(p.amount || (Number(p.quantity || 1) * Number(p.rate || 0)).toFixed(2)),
+      })));
+    }
+  }, [editingBill, storeSettings.companyName]);
+
   // Auto-persist draft bill to localStorage
   useEffect(() => {
     const draftPayload: DraftBillState = {
       customerName,
+      customerPhone,
+      customerAddress,
+      customerGst,
       billNo,
       billDate,
       discount,
@@ -138,7 +218,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     } catch (e) {
       console.warn('Failed to auto-save draft bill to localStorage', e);
     }
-  }, [customerName, billNo, billDate, discount, transport, packing, tax, productRows]);
+  }, [customerName, customerPhone, customerAddress, customerGst, billNo, billDate, discount, transport, packing, tax, productRows]);
 
   // Listen for settings update (when user updates company name/logo/tax settings in Settings)
   useEffect(() => {
@@ -169,7 +249,13 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
       ]);
 
       if (Array.isArray(custRes) && custRes.length > 0) {
-        const mapped = custRes.map((c: any) => ({ id: c._id || c.id, name: c.name }));
+        const mapped = custRes.map((c: any) => ({
+          id: c._id || c.id,
+          name: c.name,
+          phone: c.mobile && c.mobile !== '-' ? c.mobile : c.phone && c.phone !== '-' ? c.phone : '',
+          address: c.address && c.address !== '-' ? c.address : '',
+          gst: c.gst && c.gst !== '-' && c.gst !== 'N/A' ? c.gst : '',
+        }));
         setCustomerOptions(mapped);
       }
 
@@ -202,11 +288,11 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
 
       if (Array.isArray(priceRes)) {
         priceRes.forEach((item: any) => {
-          const key = (item.itemName || '').trim();
+          const key = (item.itemName || item.name || '').trim();
           if (key) {
             const existing = prodMap.get(key.toLowerCase());
             prodMap.set(key.toLowerCase(), {
-              id: item._id || item.id || existing?.id || key,
+              id: item._id || item.id || existing?.id || `price-${Date.now()}`,
               name: key,
               category: item.category || existing?.category || 'General',
               rate: item.rate !== undefined && item.rate > 0 ? item.rate : (existing?.rate || 0),
@@ -219,48 +305,71 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
 
       const mergedList = Array.from(prodMap.values());
       setProductOptions(mergedList);
+
       if (mergedList.length > 0 && !selectedProduct) {
         setSelectedProduct(mergedList[0].name);
         setRate(String(mergedList[0].rate || 0));
         setUnit(mergedList[0].unit || 'Box');
       }
     } catch (err) {
-      console.error('Failed to load billing options:', err);
+      console.error('Failed to load billing dropdown options:', err);
     }
   };
 
-  // Fetch Next Bill Number
-  const fetchNextBillNo = async () => {
+  // Fetch Next Suggested Bill No (e.g. 0001, 0002...)
+  const fetchNextBillNo = async (force: boolean = false) => {
+    if (editingBillId && !force) return;
     try {
       const res = await ParticularsApi.getNextBillNo();
-      if (res?.nextBillNo) {
-        setBillNo(res.nextBillNo);
+      const nextNo = (res as any)?.nextBillNo || (res as any)?.data?.nextBillNo;
+      if (nextNo) {
+        setBillNo(nextNo);
       } else {
-        setBillNo(`INV-${Date.now().toString().slice(-4)}`);
+        setBillNo('0001');
       }
-    } catch {
-      setBillNo(`INV-${Date.now().toString().slice(-4)}`);
+    } catch (e) {
+      console.error('Could not fetch next bill no:', e);
+      setBillNo((prev) => prev || '0001');
     }
   };
 
-  // Always keep date current today
   const refreshDate = () => {
+    if (draft.billDate) return;
     const today = new Date();
     setBillDate(today.toLocaleDateString('en-GB').replace(/\//g, '-'));
   };
 
   useEffect(() => {
     loadOptions();
-    fetchNextBillNo();
+    fetchNextBillNo(true);
     refreshDate();
   }, []);
+
+  // Listen for external bill update/deletion events to keep Bill No in sync
+  useEffect(() => {
+    const handleBillsUpdate = () => {
+      if (!editingBillId) {
+        fetchNextBillNo(true);
+      }
+    };
+    window.addEventListener('dheeksha_bills_updated', handleBillsUpdate);
+    return () => {
+      window.removeEventListener('dheeksha_bills_updated', handleBillsUpdate);
+    };
+  }, [editingBillId]);
 
   // Update customer name if prop changes
   useEffect(() => {
     if (initialCustomerName) {
       setCustomerName(initialCustomerName);
+      const matched = customerOptions.find((c) => c.name.toLowerCase() === initialCustomerName.toLowerCase());
+      if (matched) {
+        if (matched.phone) setCustomerPhone(matched.phone);
+        if (matched.address) setCustomerAddress(matched.address);
+        if (matched.gst) setCustomerGst(matched.gst);
+      }
     }
-  }, [initialCustomerName]);
+  }, [initialCustomerName, customerOptions]);
 
   // Add Product Item to Bill Row
   const handleAddProductItem = () => {
@@ -320,7 +429,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     return withAdditions + taxAmt;
   }, [subtotal, discountAmount, transport, packing, tax, storeSettings.enableTax]);
 
-  // Save Bill to DB
+  // Save or Update Bill to DB
   const handleSaveBill = async (andPrint: boolean = false) => {
     if (!customerName.trim()) {
       alert('Please select or enter Customer Name');
@@ -338,6 +447,9 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
         billNo: billNo.trim() || `INV-${Date.now().toString().slice(-4)}`,
         date: billDate,
         customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        customerAddress: customerAddress.trim(),
+        customerGst: customerGst.trim(),
         companyName: company || storeSettings.companyName || 'General',
         transport: transport || '0',
         caseCount: String(totalCases),
@@ -355,13 +467,20 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
         })),
       };
 
-      await ParticularsApi.create(payload);
+      if (editingBillId) {
+        await ParticularsApi.update(editingBillId, payload);
+      } else {
+        await ParticularsApi.create(payload);
+      }
 
       if (andPrint) {
         const printData: BillPrintData = {
           billNo: payload.billNo,
           date: payload.date,
           customerName: payload.customerName,
+          customerPhone: payload.customerPhone,
+          customerAddress: payload.customerAddress,
+          customerGst: payload.customerGst,
           companyName: payload.companyName,
           transport: payload.transport,
           caseCount: payload.caseCount,
@@ -376,21 +495,33 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
         setPrintModalOpen(true);
       }
 
-      // Reset Bill Form & Reload Recent Bills
+      const wasEditing = Boolean(editingBillId);
+      const updatedBillNo = payload.billNo;
+
+      // Reset Bill Form & Reload Next Bill No
       setProductRows([]);
       setCustomerName('');
+      setCustomerPhone('');
+      setCustomerAddress('');
+      setCustomerGst('');
       setDiscount('0');
       setTransport('0');
       setPacking('0');
       setTax(storeSettings.enableTax ? (storeSettings.defaultTaxRate || '0') : '0');
+      setEditingBillId(null);
       localStorage.removeItem(DRAFT_BILL_STORAGE_KEY);
       localStorage.removeItem('dheeksha_active_customer');
-      fetchNextBillNo();
+      fetchNextBillNo(true);
       refreshDate();
       loadOptions();
+      window.dispatchEvent(new Event('dheeksha_bills_updated'));
 
       if (!andPrint) {
-        alert(`Bill #${payload.billNo} saved successfully!`);
+        alert(wasEditing ? `✅ Bill #${updatedBillNo} updated successfully!` : `✅ Bill #${updatedBillNo} saved successfully!`);
+      }
+
+      if (wasEditing && onCancelEdit) {
+        onCancelEdit();
       }
     } catch (err: any) {
       console.error('Failed to save bill:', err);
@@ -400,20 +531,42 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
     }
   };
 
-  // Clear Draft Bill Form
+  // Clear Draft Bill Form or Cancel Edit
   const handleClearDraft = () => {
+    if (editingBillId) {
+      if (window.confirm('Cancel editing this bill and start a new invoice?')) {
+        setEditingBillId(null);
+        setProductRows([]);
+        setCustomerName('');
+        setCustomerPhone('');
+        setCustomerAddress('');
+        setCustomerGst('');
+        setDiscount('0');
+        setTransport('0');
+        setPacking('0');
+        setTax(storeSettings.enableTax ? (storeSettings.defaultTaxRate || '0') : '0');
+        fetchNextBillNo(true);
+        refreshDate();
+        onCancelEdit?.();
+      }
+      return;
+    }
+
     if (productRows.length > 0 || customerName.trim() !== '') {
       if (!window.confirm('Are you sure you want to clear this draft bill?')) return;
     }
     setProductRows([]);
     setCustomerName('');
+    setCustomerPhone('');
+    setCustomerAddress('');
+    setCustomerGst('');
     setDiscount('0');
     setTransport('0');
     setPacking('0');
     setTax(storeSettings.enableTax ? (storeSettings.defaultTaxRate || '0') : '0');
     localStorage.removeItem(DRAFT_BILL_STORAGE_KEY);
     localStorage.removeItem('dheeksha_active_customer');
-    fetchNextBillNo();
+    fetchNextBillNo(true);
     refreshDate();
   };
 
@@ -438,21 +591,57 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
         }}
       >
         <Box>
-          <Typography sx={{ fontSize: '24px', fontWeight: 800, color: '#B91C1C', letterSpacing: '-0.02em' }}>
-            New Invoice & Billing
-          </Typography>
-          <Typography sx={{ fontSize: '13px', color: '#786C58', fontWeight: 500 }}>
-            Create and print customer bills instantly with auto-populated price list rates.
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontSize: '24px', fontWeight: 800, color: '#B91C1C', letterSpacing: '-0.02em' }}>
+              {editingBillId ? `Edit Invoice #${billNo}` : 'New Invoice & Billing'}
+            </Typography>
+            {editingBillId && (
+              <Chip
+                label="EDITING MODE"
+                size="small"
+                sx={{
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '11px',
+                  letterSpacing: '0.04em',
+                }}
+              />
+            )}
+          </Box>
+          <Typography sx={{ fontSize: '13px', color: '#786C58', fontWeight: 500, mt: 0.3 }}>
+            {editingBillId
+              ? `Modifying invoice details for ${customerName || 'customer'}. Changes will update the existing bill record.`
+              : 'Create and print customer bills instantly with auto-populated price list rates.'}
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          {productRows.length > 0 && (
-            <Chip
-              label={`Draft Auto-Saved (${productRows.length} items)`}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          {editingBillId ? (
+            <Button
+              variant="outlined"
               size="small"
-              sx={{ backgroundColor: '#FEF3C7', color: '#B45309', fontWeight: 800, border: '1px solid #FCD34D' }}
-            />
+              onClick={handleClearDraft}
+              sx={{
+                borderColor: '#DC2626',
+                color: '#DC2626',
+                fontWeight: 700,
+                fontSize: '12px',
+                textTransform: 'none',
+                borderRadius: '8px',
+                '&:hover': { backgroundColor: '#FEF2F2', borderColor: '#B91C1C' },
+              }}
+            >
+              Exit Edit Mode (Start New Bill)
+            </Button>
+          ) : (
+            productRows.length > 0 && (
+              <Chip
+                label={`Draft Auto-Saved (${productRows.length} items)`}
+                size="small"
+                sx={{ backgroundColor: '#FEF3C7', color: '#B45309', fontWeight: 800, border: '1px solid #FCD34D' }}
+              />
+            )
           )}
         </Box>
       </Box>
@@ -488,7 +677,16 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                   size="small"
                   options={customerOptions.map((c) => c.name)}
                   value={customerName || ''}
-                  onChange={(_, val) => setCustomerName(val || '')}
+                  onChange={(_, val) => {
+                    const nameVal = val || '';
+                    setCustomerName(nameVal);
+                    const matched = customerOptions.find((c) => c.name.toLowerCase() === nameVal.toLowerCase());
+                    if (matched) {
+                      if (matched.phone) setCustomerPhone(matched.phone);
+                      if (matched.address) setCustomerAddress(matched.address);
+                      if (matched.gst) setCustomerGst(matched.gst);
+                    }
+                  }}
                   onInputChange={(_, val) => setCustomerName(val || '')}
                   renderInput={(params) => (
                     <TextField
@@ -502,6 +700,57 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                 />
               </Box>
 
+              {/* Customer Phone, Address & GSTIN */}
+              <Grid container spacing={1.5}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography sx={{ fontSize: '12.5px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    Phone Number <span style={{ fontSize: '11px', fontWeight: 500, color: '#9CA3AF' }}>(Optional)</span>
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="e.g. 98765 43210"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography sx={{ fontSize: '12.5px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    Address / City <span style={{ fontSize: '11px', fontWeight: 500, color: '#9CA3AF' }}>(Optional)</span>
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="e.g. Sattur, Sivakasi"
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                  <Typography sx={{ fontSize: '12.5px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    GSTIN / Tax ID <span style={{ fontSize: '11px', fontWeight: 500, color: '#9CA3AF' }}>(Optional)</span>
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="e.g. 33AAAAA0000A1Z5"
+                    value={customerGst}
+                    onChange={(e) => setCustomerGst(e.target.value.toUpperCase())}
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
+                  />
+                </Grid>
+              </Grid>
+
               {/* Bill No & Date (Auto-generated & Non-editable / Read-only) */}
               <Grid container spacing={1.5}>
                 <Grid size={{ xs: 6 }}>
@@ -509,9 +758,22 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                     <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58' }}>
                       Bill / Inv No
                     </Typography>
-                    <Tooltip title="Auto Generated (Protected)" arrow>
-                      <LockOutlinedIcon sx={{ fontSize: 13, color: '#9CA3AF' }} />
-                    </Tooltip>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {!editingBillId && (
+                        <Tooltip title="Sync / Refresh Next Bill No" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={() => fetchNextBillNo(true)}
+                            sx={{ p: 0.2, color: '#DC2626' }}
+                          >
+                            <RefreshRoundedIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <Tooltip title="Auto Generated (Protected)" arrow>
+                        <LockOutlinedIcon sx={{ fontSize: 13, color: '#9CA3AF' }} />
+                      </Tooltip>
+                    </Box>
                   </Box>
                   <TextField
                     fullWidth
@@ -573,7 +835,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
               </Typography>
 
               <Grid container spacing={1.5}>
-                <Grid size={{ xs: storeSettings.enableTax ? 6 : 4 }}>
+                <Grid size={{ xs: 6, sm: storeSettings.enableTax ? 6 : 4 }}>
                   <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
                     Discount (% or ₹)
                   </Typography>
@@ -588,7 +850,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                   />
                 </Grid>
 
-                <Grid size={{ xs: storeSettings.enableTax ? 6 : 4 }}>
+                <Grid size={{ xs: 6, sm: storeSettings.enableTax ? 6 : 4 }}>
                   <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
                     Transport (₹)
                   </Typography>
@@ -603,7 +865,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                   />
                 </Grid>
 
-                <Grid size={{ xs: storeSettings.enableTax ? 6 : 4 }}>
+                <Grid size={{ xs: 6, sm: storeSettings.enableTax ? 6 : 4 }}>
                   <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
                     Packing (₹)
                   </Typography>
@@ -619,7 +881,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                 </Grid>
 
                 {storeSettings.enableTax && (
-                  <Grid size={{ xs: 6 }}>
+                  <Grid size={{ xs: 6, sm: 6 }}>
                     <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
                       Tax / GST (%)
                     </Typography>
@@ -729,7 +991,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                       '&:hover': { borderColor: '#B45309', backgroundColor: '#FFFBEB' },
                     }}
                   >
-                    Save Bill
+                    {editingBillId ? 'Update Bill' : 'Save Bill'}
                   </Button>
 
                   <Button
@@ -750,7 +1012,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                       '&:hover': { background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)' },
                     }}
                   >
-                    Save & Print
+                    {editingBillId ? 'Update & Print' : 'Save & Print'}
                   </Button>
                 </Box>
 
@@ -959,9 +1221,9 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
               </Grid>
             </Box>
 
-            {/* Current Bill Items Table */}
-            <TableContainer sx={{ minHeight: '260px', maxHeight: '460px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <Table stickyHeader size="small" aria-label="bill items table" sx={{ minWidth: { xs: '540px', sm: '100%' } }}>
+            {/* Desktop View: Current Bill Items Table */}
+            <TableContainer sx={{ display: { xs: 'none', md: 'block' }, minHeight: '260px', maxHeight: '460px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <Table stickyHeader size="small" aria-label="bill items table" sx={{ minWidth: 600 }}>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                     <TableCell sx={{ fontWeight: 800, fontSize: '11.5px', color: '#7C2D12', width: '50px', backgroundColor: '#FFFBEB' }}>
@@ -1035,6 +1297,64 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName 
                 </TableBody>
               </Table>
             </TableContainer>
+
+            {/* Mobile View: Product Row Cards */}
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.2, p: 1.5 }}>
+              {productRows.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4, color: '#786C58' }}>
+                  <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+                    No products added yet.
+                  </Typography>
+                  <Typography sx={{ fontSize: '12px', color: '#A8998A', mt: 0.5 }}>
+                    Select a product and tap "Add Item" above.
+                  </Typography>
+                </Box>
+              ) : (
+                productRows.map((row, idx) => (
+                  <Paper
+                    key={row.id}
+                    elevation={0}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: '8px',
+                      border: '1px solid #FDE68A',
+                      backgroundColor: '#FFFDF9',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1,
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: '12px', fontWeight: 800, color: '#B91C1C', width: '20px' }}>
+                        {idx + 1}.
+                      </Typography>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714', lineHeight: 1.2 }}>
+                          {row.particular}
+                        </Typography>
+                        <Typography sx={{ fontSize: '11.5px', color: '#786C58', fontWeight: 600, mt: 0.3 }}>
+                          {row.quantity} {row.pktUnit} × ₹{Number(row.rate || 0).toFixed(2)}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 800, color: '#B91C1C' }}>
+                        ₹{Number(row.amount || 0).toFixed(2)}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteRow(row.id)}
+                        sx={{ color: '#DC2626', p: 0.5, '&:hover': { backgroundColor: '#FEF2F2' } }}
+                      >
+                        <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Box>
+                  </Paper>
+                ))
+              )}
+            </Box>
           </Paper>
         </Grid>
       </Grid>

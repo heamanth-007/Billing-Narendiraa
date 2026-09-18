@@ -202,7 +202,7 @@ export const DateRangePrintModal: FC<DateRangePrintModalProps> = ({
         </Box>
 
         {/* Date Inputs Grid */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2.5 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2.5 }}>
           <Box>
             <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#1F1714', mb: 0.6 }}>
               From Date

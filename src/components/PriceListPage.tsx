@@ -102,6 +102,24 @@ export const PriceListPage: FC = () => {
   const [uploading, setUploading] = useState(false);
   const [pendingPdfDataUrl, setPendingPdfDataUrl] = useState<string>('');
 
+  // Raw Sheet Cache for Live User Column Remapping
+  const [rawSheetCache, setRawSheetCache] = useState<{ headers: { title: string; colIdx: number }[]; rows: any[][] } | null>(null);
+  const [colMapping, setColMapping] = useState<{
+    slCol: number;
+    nameCol: number;
+    catCol: number;
+    unitCol: number;
+    mrpCol: number;
+    rateCol: number;
+  }>({
+    slCol: -1,
+    nameCol: -1,
+    catCol: -1,
+    unitCol: -1,
+    mrpCol: -1,
+    rateCol: -1,
+  });
+
   // OCR Processing States (For Image Rate Cards & Scanned PDFs)
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrProgress, setOcrProgress] = useState(0);
@@ -273,6 +291,7 @@ export const PriceListPage: FC = () => {
   };
 
   // Universal Text-to-Items Parser (Supports OCR text, PDF text, and pasted WhatsApp price lists)
+  // Universal Text-to-Items Parser (Supports OCR text, PDF text, and pasted WhatsApp price lists)
   const parseTextLinesToItems = (rawText: string): Partial<PriceItem>[] => {
     const lines = rawText
       .split('\n')
@@ -280,18 +299,22 @@ export const PriceListPage: FC = () => {
       .filter((l) => l.length > 0);
 
     const parsed: Partial<PriceItem>[] = [];
-    let currentCategory = 'One Sound Crackers';
+    let currentCategory = 'Flower Pots';
     let nextSlNo = 1;
 
     const knownCats = [
       'ONE SOUND', 'SOUND CRACKERS', 'SPARKLERS', 'CHAKKARS', 'GROUND CHAKKAR',
-      'FLOWER POTS', 'ROCKETS', 'BOMBS', 'HYDRO BOMB', 'ATOM BOMB', 'GARLANDS',
+      'FLOWER POTS', 'FLOWER POT', 'ROCKETS', 'BOMBS', 'HYDRO BOMB', 'ATOM BOMB', 'GARLANDS',
       'MATCHES', 'FANCY FOUNTAINS', 'FANCY NOVELTIES', 'GIFT BOXES', 'KIDS SPECIAL',
       'AERIAL SHOTS', 'REPEATERS', 'COLOR SMOKE', 'CRACKERS', 'ROLL CAPS', 'CORA CRACKERS',
-      'ELECTRIC SPARKLERS', 'COLOR SPARKLERS', 'TWINKLING STARS'
+      'ELECTRIC SPARKLERS', 'COLOR SPARKLERS', 'TWINKLING STARS', 'FANCY FOUNTAIN', 'MULTI COLOR SHOTS'
     ];
 
-    const unitRegex = /\b(\d+\s*(?:pcs|box|pkt|tin|jar|bag|roll|cases|pkt\.)|pcs|box|pkt|tin|jar|bag|roll|cases|pkt\.)\b/i;
+    // Regex to detect piece counts that belong inside item name brackets e.g. (10 Pcs), (5 in 1)
+    const pieceCountRegex = /\b(\d+\s*(?:pcs|pc|pices|pieces|in\s*1|shots|shot|steps|leaves|balls))\b|\b(\d+Pc|\d+Pcs|\d+Pkt|\d+Pkts|\d+in\d+|\d+Shots|\d+Shot)\b/i;
+
+    // Regex to detect packaging units e.g. 1 Box, 1 Pkt, 1 Case, 1 Tin, 1 Bag, Box, Pkt
+    const packagingUnitRegex = /\b(?:(\d+)\s*)?(box|boxes|pkt|pkts|packet|packets|tin|tins|jar|jars|bag|bags|roll|rolls|case|cases|dz|dozen|set|sets|pair|pairs|crt|carton|cartons)\b/i;
 
     for (const rawLine of lines) {
       // Clean up common OCR artifacts
@@ -312,11 +335,12 @@ export const PriceListPage: FC = () => {
         lower.includes('phone') ||
         lower.includes('gstin') ||
         lower.includes('terms &') ||
+        lower.includes('conditions') ||
         lower.includes('dheeksha')
       ) {
         for (const cat of knownCats) {
           if (line.toUpperCase().includes(cat)) {
-            currentCategory = ensureEnglishText(line.replace(/[:\-_~*|]/g, '').trim()) || 'One Sound Crackers';
+            currentCategory = ensureEnglishText(line.replace(/[:\-_~*|]/g, '').trim()) || 'Flower Pots';
             break;
           }
         }
@@ -333,27 +357,53 @@ export const PriceListPage: FC = () => {
         continue;
       }
 
-      const tokens = line.split(' ').filter(Boolean);
-      if (tokens.length < 2) continue;
-
+      // 1. Extract S.No if present at the beginning
+      let workingLine = line;
       let slNo = nextSlNo;
-      let startIndex = 0;
-
-      const firstMatch = tokens[0].match(/^(\d{1,4})[\.\)\-]?$/);
-      if (firstMatch) {
-        slNo = parseInt(firstMatch[1], 10) || nextSlNo;
-        startIndex = 1;
+      const slMatch = workingLine.match(/^(\d{1,4})[\.\)\-\:\s]+/);
+      if (slMatch) {
+        slNo = parseInt(slMatch[1], 10) || nextSlNo;
+        workingLine = workingLine.slice(slMatch[0].length).trim();
       }
 
-      const unitMatch = line.match(unitRegex);
-      const unit = unitMatch ? unitMatch[0] : 'Box';
+      // 2. Extract Piece Count (e.g. 10Pc, 10 Pcs, 5 in 1) to put into Item Name in brackets
+      let pieceCountStr = '';
+      const pMatch = workingLine.match(pieceCountRegex);
+      if (pMatch) {
+        let rawP = pMatch[0].trim();
+        if (/^\d+pc$/i.test(rawP)) rawP = rawP.replace(/pc$/i, ' Pcs');
+        else if (/^\d+pcs$/i.test(rawP)) rawP = rawP.replace(/pcs$/i, ' Pcs');
+        else if (/^\d+pkt$/i.test(rawP)) rawP = rawP.replace(/pkt$/i, ' Pkt');
+        pieceCountStr = rawP;
+        workingLine = workingLine.replace(pMatch[0], ' ').replace(/\s+/g, ' ').trim();
+      }
 
+      // 3. Extract Packaging Unit (e.g. 1 Box, 1 Pkt, Box, Pkt)
+      let unit = '1 Box';
+      const uMatch = workingLine.match(packagingUnitRegex);
+      if (uMatch) {
+        const fullUnit = uMatch[0].trim();
+        const numPart = uMatch[1] ? uMatch[1].trim() : '1';
+        const typePart = (uMatch[2] || 'Box').trim();
+        const normType = typePart.charAt(0).toUpperCase() + typePart.slice(1).toLowerCase();
+        unit = `${numPart} ${normType}`;
+        workingLine = workingLine.replace(fullUnit, ' ').replace(/\s+/g, ' ').trim();
+      } else {
+        // If there's a lone '1' or '1.0' before a price, check if it's packaging qty (1 Box)
+        const loneOneMatch = workingLine.match(/(?:^|\s)(1(?:\.0)?)(?=\s+\d)/);
+        if (loneOneMatch) {
+          unit = '1 Box';
+          workingLine = workingLine.replace(loneOneMatch[0], ' ').replace(/\s+/g, ' ').trim();
+        }
+      }
+
+      // 4. Extract Numeric Price / Rates (Preserving Decimal Points!)
+      const tokens = workingLine.split(' ').filter(Boolean);
       const numericTokens: number[] = [];
       const textTokens: string[] = [];
 
-      for (let i = startIndex; i < tokens.length; i++) {
-        const tok = tokens[i];
-        const clean = tok.replace(/[₹,Rs\.\/]/gi, '').trim();
+      for (const tok of tokens) {
+        const clean = tok.replace(/[₹,Rs\/]/gi, '').replace(/,/g, '').trim();
         const num = parseFloat(clean);
         if (!isNaN(num) && /^\d+(\.\d+)?$/.test(clean) && num > 0) {
           numericTokens.push(num);
@@ -362,48 +412,82 @@ export const PriceListPage: FC = () => {
         }
       }
 
-      if (numericTokens.length === 0) continue;
+      // Filter out lone '1' if there are multiple numbers (since 1 is packaging quantity like 1 Box)
+      let validPrices = numericTokens;
+      if (validPrices.length > 1 && validPrices.includes(1)) {
+        validPrices = validPrices.filter((n) => n !== 1);
+        if (unit === '1 Box' || unit === 'Box') unit = '1 Box';
+      }
+
+      if (validPrices.length === 0) continue;
 
       let rate = 0;
       let mrp = 0;
 
-      if (numericTokens.length === 1) {
-        rate = numericTokens[0];
+      if (validPrices.length === 1) {
+        rate = validPrices[0];
         mrp = rate;
       } else {
-        const lastVal = numericTokens[numericTokens.length - 1];
-        const firstVal = numericTokens[0];
-        if (firstVal > lastVal && lastVal > 0) {
-          mrp = firstVal;
-          rate = lastVal;
-        } else {
-          rate = lastVal;
-          mrp = firstVal;
-        }
+        const val1 = validPrices[0];
+        const val2 = validPrices[validPrices.length - 1];
+        mrp = Math.max(val1, val2);
+        rate = Math.min(val1, val2);
       }
 
-      let itemName = textTokens
-        .filter((t) => !unitRegex.test(t))
+      // 5. Construct Item Name with piece count in brackets
+      let baseItemName = textTokens
         .join(' ')
         .replace(/[:\-_~*|]/g, '')
         .trim();
 
-      if (!itemName || itemName.length < 2) {
-        itemName = line
-          .replace(unitRegex, '')
+      if (!baseItemName || baseItemName.length < 2) {
+        baseItemName = workingLine
           .replace(/\b\d+(?:\.\d{1,2})?\b/g, '')
           .replace(/[:\-_~*|]/g, '')
           .trim();
       }
 
-      itemName = ensureEnglishText(itemName);
+      baseItemName = ensureEnglishText(baseItemName);
 
-      if (itemName && itemName.length >= 2 && rate > 0) {
+      // Append piece count in brackets if not already present
+      let finalItemName = baseItemName;
+      if (pieceCountStr && !finalItemName.toLowerCase().includes(pieceCountStr.toLowerCase())) {
+        finalItemName = `${baseItemName} (${pieceCountStr})`;
+      }
+
+      // Auto category detection fallback
+      let rowCategory = currentCategory;
+      const upperName = finalItemName.toUpperCase();
+      if (upperName.includes('FLOWER') || upperName.includes('POT')) {
+        rowCategory = 'Flower Pots';
+      } else if (upperName.includes('SPARKLER')) {
+        rowCategory = 'Sparklers';
+      } else if (upperName.includes('CHAKKAR') || upperName.includes('ZAMIN')) {
+        rowCategory = 'Ground Chakkars';
+      } else if (upperName.includes('ROCKET')) {
+        rowCategory = 'Rockets';
+      } else if (upperName.includes('BOMB') || upperName.includes('HYDRO') || upperName.includes('ATOM')) {
+        rowCategory = 'Bombs';
+      } else if (upperName.includes('SHOT') || upperName.includes('AERIAL')) {
+        rowCategory = 'Aerial Shots';
+      } else if (upperName.includes('GARLAND') || upperName.includes('WALA')) {
+        rowCategory = 'Garlands';
+      } else if (upperName.includes('FOUNTAIN')) {
+        rowCategory = 'Fancy Fountains';
+      } else if (upperName.includes('GIFT')) {
+        rowCategory = 'Gift Boxes';
+      } else if (upperName.includes('MATCH')) {
+        rowCategory = 'Matches';
+      } else if (upperName.includes('CAP') || upperName.includes('ROLL')) {
+        rowCategory = 'Roll Caps';
+      }
+
+      if (finalItemName && finalItemName.length >= 2 && rate > 0) {
         parsed.push({
           slNo: slNo || nextSlNo,
-          itemName,
-          category: ensureEnglishText(currentCategory) || 'General',
-          unit: unit || 'Box',
+          itemName: finalItemName,
+          category: ensureEnglishText(rowCategory) || 'Flower Pots',
+          unit: unit || '1 Box',
           mrp: mrp || rate,
           discountPercent: mrp > rate ? Math.round(((mrp - rate) / mrp) * 100) : 0,
           rate,
@@ -523,10 +607,32 @@ export const PriceListPage: FC = () => {
     }
   };
 
-  // Intelligent Spreadsheet Parser (Extracts Columnar Tables AND Hierarchical Section Heading Rate Cards)
-  const parseSpreadsheetWorkbook = (workbook: XLSX.WorkBook): Partial<PriceItem>[] => {
-    const allParsedItems: Partial<PriceItem>[] = [];
-    let globalSlNo = 1;
+  // Helper to strictly validate if a cell value is a valid packaging unit (never a numeric price)
+  const isValidUnitValue = (val: any): boolean => {
+    if (val === undefined || val === null) return false;
+    const str = String(val).trim().toLowerCase();
+    if (!str) return false;
+    // Pure number or currency value is NEVER a unit!
+    const cleanedNum = str.replace(/[₹,Rs\/\s]/gi, '').replace(/,/g, '');
+    if (/^\d+(\.\d+)?$/.test(cleanedNum)) return false;
+
+    // Common packaging units in Sivakasi cracker lists
+    const unitKeywords = [
+      'box', 'pkt', 'packet', 'pcs', 'piece', 'pieces', 'case', 'tin',
+      'bag', 'roll', 'dz', 'dozen', 'pack', 'jar', 'carton', 'pair',
+      'set', 'kg', 'gms', 'bundle', 'gross', 'item', 'unit', 'per'
+    ];
+    return unitKeywords.some((k) => str.includes(k)) || /^\d+\s*(pcs|box|pkt|in\s*1)/i.test(str);
+  };
+
+  // Helper to re-map raw sheet rows given a user-selected or auto-detected column mapping
+  const reMapRawSheetRows = (
+    rows: any[][],
+    mapping: { slCol: number; nameCol: number; catCol: number; unitCol: number; mrpCol: number; rateCol: number }
+  ): Partial<PriceItem>[] => {
+    const result: Partial<PriceItem>[] = [];
+    let nextSlNo = 1;
+    let currentCategory = 'General';
 
     // Helper to check title / contact noise lines
     const isTitleNoise = (text: string) => {
@@ -543,54 +649,183 @@ export const PriceListPage: FC = () => {
         l.includes('all rates are') ||
         l.includes('discount list') ||
         l.includes('total') ||
-        l.includes('grand total') ||
-        l.includes('dheeksha')
+        l.includes('grand total')
       );
     };
 
-    // Helper to identify if a row is a Category Section Heading (e.g. "ONE SOUND CRACKERS", "FLOWER POTS", "=== CHAKKARS ===")
     const detectCategoryHeading = (row: any[]): string | null => {
       const nonEmptyCells = row
         .map((c, i) => ({ val: String(c).trim(), idx: i }))
         .filter((item) => item.val.length > 0);
-
       if (nonEmptyCells.length === 0) return null;
 
       const rowText = nonEmptyCells.map((c) => c.val.toLowerCase()).join(' ');
-
-      // If it looks like table header definitions, it's not a category
       if (
         (rowText.includes('item name') || rowText.includes('product') || rowText.includes('particular')) &&
-        (rowText.includes('rate') || rowText.includes('mrp') || rowText.includes('price') || rowText.includes('amount'))
+        (rowText.includes('rate') || rowText.includes('mrp') || rowText.includes('price') || rowText.includes('amount') || rowText.includes('discount'))
       ) {
         return null;
       }
 
-      // Count positive numeric cells in this row (prices)
       const numericCells = nonEmptyCells.filter((c) => {
-        const clean = c.val.replace(/[₹,Rs\.\/\s]/gi, '');
+        const clean = c.val.replace(/[₹,Rs\/\s]/gi, '').replace(/,/g, '');
         const num = parseFloat(clean);
         return !isNaN(num) && num > 0 && /^\d+(\.\d+)?$/.test(clean);
       });
 
-      // A category header has no price cells (or at most a section number like "1. ONE SOUND CRACKERS")
       if (numericCells.length === 0 || (numericCells.length === 1 && nonEmptyCells.length <= 2)) {
         let textCandidate = nonEmptyCells
           .map((c) => c.val)
           .join(' ')
-          .replace(/^[\d\.\-\)\:]+/, '') // strip leading "1. " or "I. "
+          .replace(/^[\d\.\-\)\:]+/, '')
           .replace(/[:\-_~*|=#]+/g, ' ')
           .trim();
-
         textCandidate = ensureEnglishText(textCandidate);
-
         if (textCandidate.length >= 2 && textCandidate.length <= 60 && !isTitleNoise(textCandidate)) {
           return textCandidate;
         }
       }
-
       return null;
     };
+
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || !Array.isArray(row) || row.every((c) => String(c).trim() === '')) continue;
+
+      const lowerCells = row.map((c) => String(c).toLowerCase().trim());
+      const isHeaderRow =
+        lowerCells.some((c) => c.includes('product') || c.includes('item') || c.includes('particular') || c === 'name') &&
+        lowerCells.some((c) => c.includes('rate') || c.includes('price') || c.includes('mrp') || c.includes('amount') || c.includes('discount'));
+      if (isHeaderRow) continue;
+
+      const heading = detectCategoryHeading(row);
+      if (heading) {
+        currentCategory = heading;
+        continue;
+      }
+
+      let itemName = '';
+      let itemCat = currentCategory;
+      let itemUnit = '1 Box';
+      let itemMrp = 0;
+      let itemRate = 0;
+      let itemSlNo = nextSlNo;
+
+      // Item Name
+      if (mapping.nameCol !== -1 && row[mapping.nameCol] !== undefined) {
+        itemName = ensureEnglishText(String(row[mapping.nameCol]));
+      }
+
+      // If item name not in designated column, try finding best text column
+      if (!itemName || itemName.length < 2) {
+        for (let cIdx = 0; cIdx < row.length; cIdx++) {
+          if (cIdx === mapping.slCol || cIdx === mapping.rateCol || cIdx === mapping.mrpCol) continue;
+          const candidate = ensureEnglishText(String(row[cIdx] || ''));
+          if (candidate.length >= 2 && /[a-zA-Z]{2,}/.test(candidate) && !isValidUnitValue(candidate)) {
+            itemName = candidate;
+            break;
+          }
+        }
+      }
+
+      // Category
+      if (mapping.catCol !== -1 && row[mapping.catCol]) {
+        const catVal = ensureEnglishText(String(row[mapping.catCol]));
+        if (catVal && catVal.length >= 2) itemCat = catVal;
+      }
+
+      // Unit (with strict numeric rejection)
+      if (mapping.unitCol !== -1 && row[mapping.unitCol] !== undefined) {
+        const rawUnit = String(row[mapping.unitCol]).trim();
+        if (isValidUnitValue(rawUnit)) {
+          // If it's a piece count like 10 Pcs or 10Pc, put it into Item Name brackets!
+          if (/\b\d+\s*(?:pcs|pc|pices|pieces|in\s*1)\b/i.test(rawUnit) || /^\d+pc$/i.test(rawUnit)) {
+            let pStr = rawUnit;
+            if (/^\d+pc$/i.test(pStr)) pStr = pStr.replace(/pc$/i, ' Pcs');
+            if (itemName && !itemName.toLowerCase().includes(pStr.toLowerCase())) {
+              itemName = `${itemName} (${pStr})`;
+            }
+            itemUnit = '1 Box';
+          } else {
+            itemUnit = ensureEnglishText(rawUnit) || '1 Box';
+          }
+        } else {
+          // If a rate was accidentally in unit column, save it!
+          const cleanNum = rawUnit.replace(/[₹,Rs\/\s]/gi, '').replace(/,/g, '');
+          const valNum = parseFloat(cleanNum);
+          if (!isNaN(valNum) && valNum > 0 && /^\d+(\.\d+)?$/.test(cleanNum)) {
+            if (valNum !== 1 && itemRate === 0) itemRate = valNum;
+          }
+          itemUnit = '1 Box';
+        }
+      }
+
+      // 85% Discount (MRP)
+      if (mapping.mrpCol !== -1 && row[mapping.mrpCol] !== undefined) {
+        const clean = String(row[mapping.mrpCol]).replace(/[₹,Rs\/\s]/gi, '').replace(/,/g, '');
+        itemMrp = parseFloat(clean) || 0;
+      }
+
+      // Net Rate
+      if (mapping.rateCol !== -1 && row[mapping.rateCol] !== undefined) {
+        const clean = String(row[mapping.rateCol]).replace(/[₹,Rs\/\s]/gi, '').replace(/,/g, '');
+        itemRate = parseFloat(clean) || 0;
+      }
+
+      // Sl No
+      if (mapping.slCol !== -1 && row[mapping.slCol]) {
+        itemSlNo = Number(String(row[mapping.slCol]).replace(/[^\d]/g, '')) || nextSlNo;
+      }
+
+      // Fallback rate calculations:
+      if (itemRate === 0 && itemMrp > 0) itemRate = itemMrp;
+      if (itemMrp === 0 && itemRate > 0) itemMrp = itemRate;
+
+      if (itemName && itemName.length >= 2 && !isTitleNoise(itemName) && (itemRate > 0 || itemMrp > 0)) {
+        result.push({
+          slNo: itemSlNo || nextSlNo,
+          itemName,
+          category: itemCat || currentCategory || 'General',
+          unit: itemUnit || '1 Box',
+          mrp: itemMrp || itemRate,
+          discountPercent: itemMrp > itemRate ? Math.round(((itemMrp - itemRate) / itemMrp) * 100) : 0,
+          rate: itemRate,
+          stock: 100,
+        });
+        nextSlNo++;
+      }
+    }
+
+    return result;
+  };
+
+  // Handle live column selection update in modal
+  const handleColMappingChange = (field: keyof typeof colMapping, colIndex: number) => {
+    const updated = { ...colMapping, [field]: colIndex };
+    setColMapping(updated);
+    if (rawSheetCache && rawSheetCache.rows.length > 0) {
+      const reMapped = reMapRawSheetRows(rawSheetCache.rows, updated);
+      setPreviewItems(reMapped);
+    }
+  };
+
+  // Intelligent Spreadsheet Parser (Extracts Columnar Tables AND Hierarchical Section Heading Rate Cards)
+  const parseSpreadsheetWorkbook = (workbook: XLSX.WorkBook): {
+    items: Partial<PriceItem>[];
+    rawHeaders: { title: string; colIdx: number }[];
+    rawRows: any[][];
+    mapping: { slCol: number; nameCol: number; catCol: number; unitCol: number; mrpCol: number; rateCol: number };
+  } => {
+    let allParsedRows: any[][] = [];
+    let detectedHeaders: { title: string; colIdx: number }[] = [];
+    let slCol = -1;
+    let engNameCol = -1;
+    let nameCol = -1;
+    let catCol = -1;
+    let unitCol = -1;
+    let mrpCol = -1;
+    let rateCol = -1;
+    let maxCols = 0;
 
     for (const sheetName of workbook.SheetNames) {
       const worksheet = workbook.Sheets[sheetName];
@@ -599,31 +834,22 @@ export const PriceListPage: FC = () => {
       const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
       if (!rawRows || rawRows.length === 0) continue;
 
-      let currentCategory = sheetName.toLowerCase().startsWith('sheet') ? 'General' : ensureEnglishText(sheetName.trim()) || 'General';
-      let slCol = -1;
-      let engNameCol = -1;
-      let nameCol = -1;
-      let catCol = -1;
-      let unitCol = -1;
-      let mrpCol = -1;
-      let rateCol = -1;
-      let discCol = -1;
-      let stockCol = -1;
-
       for (let r = 0; r < rawRows.length; r++) {
         const row = rawRows[r];
-        if (!row || !Array.isArray(row) || row.every((c) => String(c).trim() === '')) {
-          continue;
-        }
+        if (!row || !Array.isArray(row) || row.every((c) => String(c).trim() === '')) continue;
+        allParsedRows.push(row);
+        if (row.length > maxCols) maxCols = row.length;
 
         const lowerCells = row.map((c) => String(c).toLowerCase().trim());
         const isTableHeaderRow =
           lowerCells.some((c) => c.includes('product') || c.includes('item') || c.includes('particular') || c === 'name') &&
-          lowerCells.some((c) => c.includes('rate') || c.includes('price') || c.includes('mrp') || c.includes('amount'));
+          lowerCells.some((c) => c.includes('rate') || c.includes('price') || c.includes('mrp') || c.includes('amount') || c.includes('discount'));
 
-        if (isTableHeaderRow) {
-          // Re-map column indices for this section/table, prioritizing English name column
+        if (isTableHeaderRow && detectedHeaders.length === 0) {
           lowerCells.forEach((c, idx) => {
+            const rawTitle = String(row[idx] || '').trim() || `Column ${idx + 1}`;
+            detectedHeaders.push({ title: `Col ${idx + 1}: ${rawTitle}`, colIdx: idx });
+
             if (c.includes('sl') || c.includes('s.no') || c === 'no' || c === '#') slCol = idx;
             else if (c.includes('eng') || c.includes('english')) engNameCol = idx;
             else if (c.includes('product') || c.includes('item') || c.includes('particular') || c === 'name') {
@@ -631,117 +857,57 @@ export const PriceListPage: FC = () => {
             }
             else if (c.includes('cat') || c.includes('group') || c.includes('type')) catCol = idx;
             else if (c.includes('unit') || c.includes('content') || c.includes('packing') || c.includes('pkg') || c.includes('per')) unitCol = idx;
-            else if (c.includes('mrp') || c.includes('m.r.p') || c.includes('gross') || c.includes('box rate')) mrpCol = idx;
-            else if (c.includes('disc') || c.includes('%')) discCol = idx;
+            else if (c.includes('85%') || c.includes('85') || c.includes('mrp') || c.includes('m.r.p') || c.includes('gross') || c.includes('box rate') || c.includes('discount rate') || c.includes('discount')) mrpCol = idx;
             else if (c.includes('net') || c.includes('rate') || c.includes('price') || c.includes('selling') || c.includes('final')) rateCol = idx;
-            else if (c.includes('stock') || c.includes('qty') || c.includes('quantity')) stockCol = idx;
           });
-          continue;
-        }
-
-        // Check if this row is a Category Section Heading (e.g. "ONE SOUND CRACKERS")
-        const detectedHeading = detectCategoryHeading(row);
-        if (detectedHeading) {
-          currentCategory = detectedHeading;
-          continue;
-        }
-
-        // Extract product data
-        let itemName = '';
-        let itemCat = currentCategory;
-        let itemUnit = 'Box';
-        let itemMrp = 0;
-        let itemRate = 0;
-        let itemDisc = 0;
-        let itemStock = 100;
-        let itemSlNo = globalSlNo;
-
-        // Choose best column: prefer explicit English column, or column with English characters
-        const activeNameCol = engNameCol !== -1 ? engNameCol : nameCol;
-
-        if (activeNameCol !== -1 && row[activeNameCol] !== undefined && String(row[activeNameCol]).trim() !== '') {
-          itemName = ensureEnglishText(String(row[activeNameCol]));
-
-          // If activeNameCol had Tamil or was empty after cleaning, check if another column has English letters
-          if (!itemName || !/[a-zA-Z]/.test(itemName)) {
-            for (let cIdx = 0; cIdx < row.length; cIdx++) {
-              if (cIdx === slCol || cIdx === rateCol || cIdx === mrpCol || cIdx === unitCol) continue;
-              const cellVal = String(row[cIdx] || '').trim();
-              if (/[a-zA-Z]{2,}/.test(cellVal)) {
-                const candidate = ensureEnglishText(cellVal);
-                if (candidate.length >= 2) {
-                  itemName = candidate;
-                  break;
-                }
-              }
-            }
-          }
-
-          if (slCol !== -1 && row[slCol]) itemSlNo = Number(String(row[slCol]).replace(/[^\d]/g, '')) || globalSlNo;
-          if (catCol !== -1 && row[catCol] && String(row[catCol]).trim() !== '') {
-            itemCat = ensureEnglishText(String(row[catCol])) || currentCategory;
-            currentCategory = itemCat;
-          }
-          if (unitCol !== -1 && row[unitCol]) itemUnit = ensureEnglishText(String(row[unitCol])) || 'Box';
-          if (mrpCol !== -1 && row[mrpCol]) itemMrp = Number(String(row[mrpCol]).replace(/[^\d.]/g, '')) || 0;
-          if (rateCol !== -1 && row[rateCol]) itemRate = Number(String(row[rateCol]).replace(/[^\d.]/g, '')) || 0;
-          if (discCol !== -1 && row[discCol]) itemDisc = Number(String(row[discCol]).replace(/[^\d.]/g, '')) || 0;
-          if (stockCol !== -1 && row[stockCol]) itemStock = Number(String(row[stockCol]).replace(/[^\d.]/g, '')) || 0;
-        } else {
-          // Freeform cells analysis: inspect text cells and prefer English characters
-          const nonEmpty = row.map((c, i) => ({ val: String(c).trim(), idx: i })).filter((x) => x.val.length > 0);
-          const textTokens: string[] = [];
-          const numTokens: number[] = [];
-
-          for (const cell of nonEmpty) {
-            const clean = cell.val.replace(/[₹,Rs\.\/\s]/gi, '').trim();
-            const num = parseFloat(clean);
-            if (!isNaN(num) && /^\d+(\.\d+)?$/.test(clean) && num > 0) {
-              numTokens.push(num);
-            } else {
-              textTokens.push(cell.val);
-            }
-          }
-
-          if (textTokens.length > 0 && numTokens.length > 0) {
-            // Find English text among tokens
-            const engText = textTokens.filter((t) => /[a-zA-Z]/.test(t)).join(' ');
-            const rawCand = engText || textTokens.join(' ');
-            itemName = ensureEnglishText(rawCand);
-
-            if (numTokens.length === 1) {
-              itemRate = numTokens[0];
-              itemMrp = itemRate;
-            } else {
-              itemMrp = numTokens[0];
-              itemRate = numTokens[numTokens.length - 1];
-            }
-          }
-        }
-
-        // Calculate rate if MRP & discount provided
-        if (!itemRate && itemMrp > 0) {
-          itemRate = itemDisc > 0 ? itemMrp - (itemMrp * itemDisc) / 100 : itemMrp;
-        }
-
-        // Validate product
-        if (itemName && itemName.length >= 2 && !isTitleNoise(itemName) && (itemRate > 0 || itemMrp > 0)) {
-          allParsedItems.push({
-            slNo: itemSlNo || globalSlNo,
-            itemName,
-            category: itemCat || currentCategory || 'General',
-            unit: itemUnit || 'Box',
-            mrp: itemMrp || itemRate,
-            discountPercent: itemDisc || (itemMrp > itemRate ? Math.round(((itemMrp - itemRate) / itemMrp) * 100) : 0),
-            rate: itemRate,
-            stock: itemStock || 100,
-          });
-          globalSlNo++;
         }
       }
     }
 
-    return allParsedItems;
+    // If no explicit table header row was matched, build generic column list
+    if (detectedHeaders.length === 0) {
+      for (let i = 0; i < Math.max(maxCols, 6); i++) {
+        detectedHeaders.push({ title: `Column ${i + 1}`, colIdx: i });
+      }
+    }
+
+    // Auto-detect columns from cell contents if headers weren't found:
+    if (nameCol === -1 && engNameCol === -1) {
+      // Find the first column that contains text with words
+      for (let c = 0; c < maxCols; c++) {
+        const textCount = allParsedRows.filter((r) => r[c] && /[a-zA-Z]{3,}/.test(String(r[c]))).length;
+        if (textCount >= 3) {
+          nameCol = c;
+          break;
+        }
+      }
+    }
+
+    // Smart check on unitCol: if more than 50% of rows have numbers in unitCol, it is NOT a unit column!
+    if (unitCol !== -1) {
+      const numCountInUnitCol = allParsedRows.filter((r) => {
+        const val = String(r[unitCol] || '').trim().replace(/[₹,Rs\.\/\s]/gi, '');
+        return /^\d+(\.\d+)?$/.test(val);
+      }).length;
+      if (numCountInUnitCol > allParsedRows.length * 0.4) {
+        // unitCol was actually a rate or mrp column!
+        if (mrpCol === -1) mrpCol = unitCol;
+        else if (rateCol === -1) rateCol = unitCol;
+        unitCol = -1; // reset unit to default 'Box'
+      }
+    }
+
+    const mapping = {
+      slCol,
+      nameCol: engNameCol !== -1 ? engNameCol : nameCol !== -1 ? nameCol : 1,
+      catCol,
+      unitCol,
+      mrpCol: mrpCol !== -1 ? mrpCol : rateCol !== -1 ? rateCol : -1,
+      rateCol: rateCol !== -1 ? rateCol : mrpCol !== -1 ? mrpCol : -1,
+    };
+
+    const items = reMapRawSheetRows(allParsedRows, mapping);
+    return { items, rawHeaders: detectedHeaders, rawRows: allParsedRows, mapping };
   };
 
   // Unified File Processor (Supports Excel, CSV, PDF, and Images with OCR)
@@ -760,23 +926,25 @@ export const PriceListPage: FC = () => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
-          const parsed = parseSpreadsheetWorkbook(workbook);
+          const { items, rawHeaders, rawRows, mapping } = parseSpreadsheetWorkbook(workbook);
 
-          if (parsed.length === 0) {
+          if (items.length === 0) {
             alert('No valid items found. Please ensure your sheet has product names and rates/MRPs.');
             return;
           }
 
-          const uniqueCategories = Array.from(new Set(parsed.map((p) => p.category).filter(Boolean)));
+          const uniqueCategories = Array.from(new Set(items.map((p) => p.category).filter(Boolean)));
 
+          setRawSheetCache({ headers: rawHeaders, rows: rawRows });
+          setColMapping(mapping);
           setPendingPdfDataUrl('');
-          setPreviewItems(parsed);
+          setPreviewItems(items);
           setUploadFileName(file.name);
           setUploadBatchName(file.name.replace(/\.[^/.]+$/, ''));
           setUploadModalOpen(true);
           setToast({
             open: true,
-            message: `📊 Excel analyzed: Found ${parsed.length} products across ${uniqueCategories.length} categories (${uniqueCategories.slice(0, 3).join(', ')}${uniqueCategories.length > 3 ? '...' : ''})!`,
+            message: `📊 Excel analyzed: Found ${items.length} products across ${uniqueCategories.length} categories (${uniqueCategories.slice(0, 3).join(', ')}${uniqueCategories.length > 3 ? '...' : ''})!`,
             severity: 'success',
           });
         } catch (err) {
@@ -1112,7 +1280,7 @@ export const PriceListPage: FC = () => {
         'Item Name': '2 3/4 Kuruvi Crackers',
         Category: 'One Sound Crackers',
         Unit: 'Box',
-        MRP: 120,
+        '85% Discount (₹)': 120,
         'Discount %': 15,
         Rate: 102,
         Stock: 500,
@@ -1122,7 +1290,7 @@ export const PriceListPage: FC = () => {
         'Item Name': 'Ground Chakkar Special (10 Pcs)',
         Category: 'Ground Chakkars',
         Unit: 'Box',
-        MRP: 250,
+        '85% Discount (₹)': 250,
         'Discount %': 20,
         Rate: 200,
         Stock: 350,
@@ -1132,7 +1300,7 @@ export const PriceListPage: FC = () => {
         'Item Name': 'Flower Pots Special (10 Pcs)',
         Category: 'Flower Pots / Sparklers',
         Unit: 'Box',
-        MRP: 320,
+        '85% Discount (₹)': 320,
         'Discount %': 20,
         Rate: 256,
         Stock: 280,
@@ -1142,7 +1310,7 @@ export const PriceListPage: FC = () => {
         'Item Name': '12 Shot Rider Aerial Fireworks',
         Category: 'Fancy Aerial Shots',
         Unit: 'Box',
-        MRP: 750,
+        '85% Discount (₹)': 750,
         'Discount %': 10,
         Rate: 675,
         Stock: 120,
@@ -1174,7 +1342,7 @@ export const PriceListPage: FC = () => {
       'Item Name': item.itemName,
       Category: item.category,
       Unit: item.unit,
-      MRP: item.mrp,
+      '85% Discount (₹)': item.mrp || 0,
       'Discount %': item.discountPercent || 0,
       'Net Rate': item.rate,
       Stock: item.stock || 0,
@@ -1482,6 +1650,7 @@ export const PriceListPage: FC = () => {
                 justifyContent: { xs: 'flex-start', md: 'flex-end' },
                 gap: 1.5,
                 flexWrap: 'wrap',
+                width: '100%',
               }}
             >
               {/* Download Sample Template */}
@@ -1500,6 +1669,7 @@ export const PriceListPage: FC = () => {
                   py: 1,
                   borderRadius: '8px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  width: { xs: '100%', sm: 'auto' },
                   '&:hover': {
                     borderColor: '#F59E0B',
                     backgroundColor: '#FFFBEB',
@@ -1525,6 +1695,7 @@ export const PriceListPage: FC = () => {
                   py: 1,
                   borderRadius: '8px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  width: { xs: '100%', sm: 'auto' },
                   '&:hover': {
                     borderColor: '#F59E0B',
                     backgroundColor: '#FFFBEB',
@@ -1550,6 +1721,7 @@ export const PriceListPage: FC = () => {
                   py: 1,
                   borderRadius: '8px',
                   boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                  width: { xs: '100%', sm: 'auto' },
                   '&:hover': {
                     background: 'linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)',
                   },
@@ -1564,13 +1736,14 @@ export const PriceListPage: FC = () => {
 
       {/* View Mode Toggle: Table Catalog vs Uploaded Documents (PDF/Images) */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1.5 }}>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
           <Button
             variant={activeViewMode === 'table' ? 'contained' : 'outlined'}
             disableElevation
             onClick={() => setActiveViewMode('table')}
             startIcon={<TableChartRoundedIcon sx={{ fontSize: 18 }} />}
             sx={{
+              flex: { xs: 1, sm: 'none' },
               backgroundColor: activeViewMode === 'table' ? '#B91C1C' : '#FFFFFF',
               color: activeViewMode === 'table' ? '#FFFFFF' : '#78350F',
               borderColor: '#FDE68A',
@@ -1590,6 +1763,7 @@ export const PriceListPage: FC = () => {
             onClick={() => setActiveViewMode('documents')}
             startIcon={<PictureAsPdfRoundedIcon sx={{ fontSize: 18 }} />}
             sx={{
+              flex: { xs: 1, sm: 'none' },
               backgroundColor: activeViewMode === 'documents' ? '#B91C1C' : '#FFFFFF',
               color: activeViewMode === 'documents' ? '#FFFFFF' : '#78350F',
               borderColor: '#FDE68A',
@@ -1667,7 +1841,8 @@ export const PriceListPage: FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.5,
-                flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                flexWrap: 'wrap',
+                width: { xs: '100%', lg: 'auto' },
               }}
             >
               {/* Search Input */}
@@ -1729,6 +1904,7 @@ export const PriceListPage: FC = () => {
                   height: '38px',
                   borderRadius: '8px',
                   whiteSpace: 'nowrap',
+                  flex: { xs: 1, sm: 'none' },
                   '&:hover': {
                     backgroundColor: 'rgba(255, 255, 255, 0.3)',
                   },
@@ -1754,6 +1930,7 @@ export const PriceListPage: FC = () => {
                   height: '38px',
                   borderRadius: '8px',
                   whiteSpace: 'nowrap',
+                  flex: { xs: 1, sm: 'none' },
                   '&:hover': {
                     backgroundColor: 'rgba(255, 255, 255, 0.3)',
                   },
@@ -1780,6 +1957,7 @@ export const PriceListPage: FC = () => {
                   borderRadius: '8px',
                   boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
                   whiteSpace: 'nowrap',
+                  width: { xs: '100%', sm: 'auto' },
                   '&:hover': {
                     backgroundColor: '#FFFBEB',
                   },
@@ -1792,6 +1970,7 @@ export const PriceListPage: FC = () => {
 
           {/* Category Pills Filter Bar */}
           <Box
+            className="touch-scroll"
             sx={{
               p: 1.5,
               px: { xs: 2, sm: 3 },
@@ -1801,8 +1980,6 @@ export const PriceListPage: FC = () => {
               alignItems: 'center',
               gap: 1,
               overflowX: 'auto',
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
             }}
           >
             <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#92400E', mr: 0.5, flexShrink: 0 }}>
@@ -1871,9 +2048,9 @@ export const PriceListPage: FC = () => {
             )}
           </Box>
 
-          {/* Price List Table */}
-          <TableContainer sx={{ maxHeight: { xs: '500px', md: 'calc(100vh - 380px)' }, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <Table stickyHeader sx={{ minWidth: { xs: '680px', sm: '100%' } }} aria-label="price list table">
+          {/* Desktop View: Price List Table */}
+          <TableContainer sx={{ display: { xs: 'none', md: 'block' }, maxHeight: 'calc(100vh - 380px)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Table stickyHeader sx={{ minWidth: 700 }} aria-label="price list table">
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#FFFBEB' }}>
                   <TableCell
@@ -1950,7 +2127,7 @@ export const PriceListPage: FC = () => {
                       width: '110px',
                     }}
                   >
-                    MRP (₹)
+                    85% DISCOUNT (₹)
                   </TableCell>
                   <TableCell
                     align="center"
@@ -2245,6 +2422,114 @@ export const PriceListPage: FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Mobile View: Price List Item Cards */}
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.2, p: 1.5 }}>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+                <CircularProgress size={32} sx={{ color: '#DC2626' }} />
+              </Box>
+            ) : filteredItems.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4, color: '#786C58' }}>
+                <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
+                  {searchTerm ? `No items matching "${searchTerm}" found.` : 'No items in price list yet.'}
+                </Typography>
+              </Box>
+            ) : (
+              filteredItems.map((item, index) => (
+                <Paper
+                  key={item._id || item.id || index}
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: '10px',
+                    border: '1px solid #FDE68A',
+                    backgroundColor: '#FFFDF9',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.3 }}>
+                        <Typography sx={{ fontSize: '12px', fontWeight: 800, color: '#B91C1C' }}>
+                          #{item.slNo || index + 1}
+                        </Typography>
+                        <Chip
+                          label={item.category || 'General'}
+                          size="small"
+                          sx={{
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            backgroundColor: '#FFFBEB',
+                            color: '#92400E',
+                            border: '1px solid #FDE68A',
+                            borderRadius: '4px',
+                            height: '20px',
+                          }}
+                        />
+                        <Typography sx={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>
+                          {item.unit || 'Box'}
+                        </Typography>
+                      </Box>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1F1714', lineHeight: 1.25 }}>
+                        {item.itemName}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                      <Typography sx={{ fontSize: '16px', fontWeight: 900, color: '#B91C1C' }}>
+                        ₹{Number(item.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Typography>
+                      {item.mrp ? (
+                        <Typography sx={{ fontSize: '11px', color: '#9CA3AF', textDecoration: 'line-through' }}>
+                          ₹{Number(item.mrp).toLocaleString('en-IN')}
+                        </Typography>
+                      ) : null}
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, pt: 0.5, borderTop: '1px solid #FEF3C7' }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleOpenEdit(item)}
+                      startIcon={<ModeEditOutlineRoundedIcon sx={{ fontSize: 14 }} />}
+                      sx={{
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        color: '#D97706',
+                        borderColor: '#FDE68A',
+                        backgroundColor: '#FFFBEB',
+                        borderRadius: '6px',
+                        py: 0.3,
+                        px: 1,
+                      }}
+                    >
+                      Edit Rate
+                    </Button>
+
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteItem(item)}
+                      sx={{
+                        color: '#DC2626',
+                        backgroundColor: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        borderRadius: '6px',
+                        p: 0.6,
+                        '&:hover': { color: '#FFFFFF', backgroundColor: '#DC2626' },
+                      }}
+                    >
+                      <DeleteOutlineRoundedIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Box>
+                </Paper>
+              ))
+            )}
+          </Box>
         </Paper>
       )}
 
@@ -2605,6 +2890,137 @@ SPARKLERS
             </Grid>
           </Grid>
 
+          {/* Dynamic Interactive Column Matcher Bar */}
+          {rawSheetCache && rawSheetCache.headers.length > 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                backgroundColor: '#FFFBEB',
+                border: '1.5px solid #FDE68A',
+                borderRadius: '12px',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+                <Typography sx={{ fontSize: '13.5px', fontWeight: 800, color: '#92400E', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <TableChartRoundedIcon sx={{ fontSize: 18, color: '#D97706' }} />
+                  Match Uploaded Columns (Auto-Detected):
+                </Typography>
+                <Typography sx={{ fontSize: '11.5px', color: '#B45309', fontWeight: 600 }}>
+                  💡 <em>If any column looks misplaced, simply select the correct column from the dropdowns below!</em>
+                </Typography>
+              </Box>
+
+              <Grid container spacing={1.5}>
+                {/* Product Name Column */}
+                <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                  <Typography sx={{ fontSize: '11.5px', fontWeight: 700, color: '#78350F', mb: 0.4 }}>
+                    Product Name *
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={colMapping.nameCol}
+                      onChange={(e) => handleColMappingChange('nameCol', Number(e.target.value))}
+                      sx={{ fontSize: '12px', backgroundColor: '#FFFFFF', borderRadius: '6px' }}
+                    >
+                      <MenuItem value={-1}>-- Select Column --</MenuItem>
+                      {rawSheetCache.headers.map((h) => (
+                        <MenuItem key={h.colIdx} value={h.colIdx}>
+                          {h.title}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Unit / Packing Column */}
+                <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+                  <Typography sx={{ fontSize: '11.5px', fontWeight: 700, color: '#78350F', mb: 0.4 }}>
+                    Unit / Packing
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={colMapping.unitCol}
+                      onChange={(e) => handleColMappingChange('unitCol', Number(e.target.value))}
+                      sx={{ fontSize: '12px', backgroundColor: '#FFFFFF', borderRadius: '6px' }}
+                    >
+                      <MenuItem value={-1}>-- Default (Box) --</MenuItem>
+                      {rawSheetCache.headers.map((h) => (
+                        <MenuItem key={h.colIdx} value={h.colIdx}>
+                          {h.title}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* 85% Discount (MRP) Column */}
+                <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+                  <Typography sx={{ fontSize: '11.5px', fontWeight: 700, color: '#78350F', mb: 0.4 }}>
+                    85% Discount (₹)
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={colMapping.mrpCol}
+                      onChange={(e) => handleColMappingChange('mrpCol', Number(e.target.value))}
+                      sx={{ fontSize: '12px', backgroundColor: '#FFFFFF', borderRadius: '6px' }}
+                    >
+                      <MenuItem value={-1}>-- None --</MenuItem>
+                      {rawSheetCache.headers.map((h) => (
+                        <MenuItem key={h.colIdx} value={h.colIdx}>
+                          {h.title}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Net Rate Column */}
+                <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+                  <Typography sx={{ fontSize: '11.5px', fontWeight: 700, color: '#B91C1C', mb: 0.4 }}>
+                    Net Rate (₹) *
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={colMapping.rateCol}
+                      onChange={(e) => handleColMappingChange('rateCol', Number(e.target.value))}
+                      sx={{ fontSize: '12px', backgroundColor: '#FFFFFF', borderRadius: '6px' }}
+                    >
+                      <MenuItem value={-1}>-- None --</MenuItem>
+                      {rawSheetCache.headers.map((h) => (
+                        <MenuItem key={h.colIdx} value={h.colIdx}>
+                          {h.title}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Category Column */}
+                <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
+                  <Typography sx={{ fontSize: '11.5px', fontWeight: 700, color: '#78350F', mb: 0.4 }}>
+                    Category
+                  </Typography>
+                  <FormControl fullWidth size="small">
+                    <Select
+                      value={colMapping.catCol}
+                      onChange={(e) => handleColMappingChange('catCol', Number(e.target.value))}
+                      sx={{ fontSize: '12px', backgroundColor: '#FFFFFF', borderRadius: '6px' }}
+                    >
+                      <MenuItem value={-1}>-- Auto (Sheet/Section) --</MenuItem>
+                      {rawSheetCache.headers.map((h) => (
+                        <MenuItem key={h.colIdx} value={h.colIdx}>
+                          {h.title}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+
           <Divider sx={{ my: 1.5, borderColor: '#FDE68A' }} />
 
           {/* Fully Interactive & Editable Table Container */}
@@ -2624,7 +3040,7 @@ SPARKLERS
                     CATEGORY
                   </TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '11.5px', width: '90px' }}>UNIT</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '11.5px', width: '100px' }}>MRP (₹)</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '11.5px', width: '115px' }}>85% DISCOUNT (₹)</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '11.5px', width: '110px', color: '#B91C1C' }}>
                     RATE (₹) *
                   </TableCell>
@@ -3209,7 +3625,7 @@ SPARKLERS
 
             <Grid size={{ xs: 6, sm: 3 }}>
               <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#786C58', mb: 0.6 }}>
-                MRP (₹)
+                85% Discount (₹)
               </Typography>
               <TextField
                 fullWidth

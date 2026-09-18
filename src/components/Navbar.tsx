@@ -90,9 +90,9 @@ export const Navbar: FC<NavbarProps> = ({
         component="header"
         sx={{
           width: '100%',
-          backgroundColor: '#FFFFFF',
-          borderBottom: '2px solid #FDE68A',
-          background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFDF7 100%)',
+          backgroundColor: '#990000',
+          background: 'linear-gradient(135deg, #990000 0%, #800A0A 50%, #630505 100%)',
+          borderBottom: '2.5px solid #F59E0B',
           px: { xs: 1.5, sm: 2.5, md: 4 },
           height: { xs: '58px', sm: '66px' },
           display: 'flex',
@@ -102,19 +102,19 @@ export const Navbar: FC<NavbarProps> = ({
           top: 0,
           zIndex: 1100,
           boxSizing: 'border-box',
-          boxShadow: '0 4px 20px -2px rgba(217, 119, 6, 0.08)',
+          boxShadow: '0 4px 20px rgba(100, 5, 5, 0.35)',
         }}
       >
-        {/* Left Logo Section */}
+        {/* Left Logo & Brand Section */}
         <Box
           onClick={() => handleTabClick('All Customers')}
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: 1.2,
             cursor: 'pointer',
             minWidth: 0,
-            maxWidth: { xs: '65%', sm: 'auto' },
+            maxWidth: { xs: '68%', sm: 'auto' },
           }}
         >
           {/* Logo */}
@@ -124,12 +124,12 @@ export const Navbar: FC<NavbarProps> = ({
               src={companySettings.logoUrl}
               alt="Company Logo"
               sx={{
-                height: { xs: 30, sm: 36 },
-                maxWidth: { xs: 40, sm: 48 },
+                height: { xs: 32, sm: 38 },
+                maxWidth: { xs: 42, sm: 50 },
                 width: 'auto',
                 objectFit: 'contain',
                 backgroundColor: 'transparent',
-                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.12))',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                 display: 'block',
                 flexShrink: 0,
               }}
@@ -137,55 +137,58 @@ export const Navbar: FC<NavbarProps> = ({
           ) : (
             <Box
               sx={{
-                width: { xs: 32, sm: 36 },
-                height: { xs: 32, sm: 36 },
-                borderRadius: '8px',
-                border: '1.5px solid #F59E0B',
-                background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+                width: { xs: 34, sm: 38 },
+                height: { xs: 34, sm: 38 },
+                borderRadius: '9px',
+                border: '1.5px solid #FFD700',
+                background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.3)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
                 flexShrink: 0,
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
                   d="M7 6H13C16.3137 6 19 8.68629 19 12C19 15.3137 16.3137 18 13 18H7V6Z"
-                  stroke="#FEF08A"
+                  stroke="#FFFFFF"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <path
                   d="M10 9.5H13C14.3807 9.5 15.5 10.6193 15.5 12C15.5 13.3807 14.3807 14.5 13 14.5H10V9.5Z"
-                  fill="#FEF08A"
+                  fill="#FFFFFF"
                 />
               </svg>
             </Box>
           )}
 
-          <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+          <Box sx={{ minWidth: 0, overflow: 'hidden', flexShrink: 1 }}>
             <Typography
               variant="h6"
               sx={{
-                fontWeight: 800,
-                fontSize: { xs: '14.5px', sm: '17px' },
-                color: '#B91C1C',
-                letterSpacing: '-0.02em',
+                fontWeight: 900,
+                fontSize: { xs: '13.5px', sm: '18px' },
+                color: '#FFD700',
+                letterSpacing: '0.01em',
                 lineHeight: 1.15,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
+                textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
               }}
             >
-              {companySettings.companyName || 'Billing & Management'}
+              {companySettings.companyName || 'NARENDIRAA ENTERPRISES'}
             </Typography>
             <Typography
               sx={{
-                fontSize: { xs: '9px', sm: '10.5px' },
+                fontSize: { xs: '8.5px', sm: '11px' },
                 fontWeight: 700,
-                color: '#D97706',
+                color: '#FFFFFF',
+                opacity: 0.95,
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
@@ -193,7 +196,7 @@ export const Navbar: FC<NavbarProps> = ({
                 textOverflow: 'ellipsis',
               }}
             >
-              {companySettings.tagline || (companySettings.city ? `${companySettings.city}` : 'Billing & Management')}
+              {companySettings.tagline || (companySettings.city ? `${companySettings.city}` : 'Sivakasi')}
             </Typography>
           </Box>
         </Box>
@@ -221,18 +224,19 @@ export const Navbar: FC<NavbarProps> = ({
                   alignItems: 'center',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
-                  px: 0.5,
+                  px: 0.8,
                 }}
               >
                 <Typography
                   sx={{
                     fontWeight: isActive ? 800 : 600,
                     fontSize: '14px',
-                    color: isActive ? '#B91C1C' : '#57463A',
-                    letterSpacing: '-0.01em',
+                    color: isActive ? '#FFD700' : '#FDE68A',
+                    letterSpacing: '0.01em',
                     transition: 'all 0.15s ease',
+                    textShadow: isActive ? '0 0 10px rgba(255, 215, 0, 0.5)' : 'none',
                     '&:hover': {
-                      color: '#B91C1C',
+                      color: '#FFFFFF',
                     },
                   }}
                 >
@@ -248,10 +252,10 @@ export const Navbar: FC<NavbarProps> = ({
                       left: 0,
                       right: 0,
                       height: '3.5px',
-                      background: 'linear-gradient(90deg, #DC2626 0%, #F59E0B 100%)',
+                      background: 'linear-gradient(90deg, #FFD700 0%, #F59E0B 100%)',
                       borderTopLeftRadius: '3px',
                       borderTopRightRadius: '3px',
-                      boxShadow: '0 -2px 6px rgba(220, 38, 38, 0.35)',
+                      boxShadow: '0 -2px 8px rgba(255, 215, 0, 0.6)',
                     }}
                   />
                 )}
@@ -261,28 +265,29 @@ export const Navbar: FC<NavbarProps> = ({
         </Box>
 
         {/* Right Action Section */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.8, sm: 1.5 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.8, sm: 1.5 }, flexShrink: 0 }}>
           {/* Profile Avatar Button */}
           <Box
             onClick={handleProfileClick}
             sx={{
-              width: { xs: 32, sm: 36 },
-              height: { xs: 32, sm: 36 },
+              width: { xs: 34, sm: 36 },
+              height: { xs: 34, sm: 36 },
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%)',
-              border: '1.5px solid #FDE68A',
+              background: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
+              border: '1.5px solid #FFD700',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: '0 2px 6px rgba(30, 64, 175, 0.3)',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
               '&:hover': {
-                transform: 'scale(1.06)',
+                transform: 'scale(1.08)',
+                boxShadow: '0 0 12px rgba(255, 215, 0, 0.6)',
               },
             }}
           >
-            <PersonOutlineRoundedIcon sx={{ fontSize: { xs: 18, sm: 20 }, color: '#FFFFFF' }} />
+            <PersonOutlineRoundedIcon sx={{ fontSize: { xs: 19, sm: 20 }, color: '#FFD700' }} />
           </Box>
 
           {/* Mobile Hamburger Menu Button (Visible only on mobile/tablet) */}
@@ -290,13 +295,15 @@ export const Navbar: FC<NavbarProps> = ({
             onClick={() => setMobileDrawerOpen(true)}
             sx={{
               display: { xs: 'flex', md: 'none' },
-              color: '#B91C1C',
-              backgroundColor: '#FFFBEB',
-              border: '1px solid #FDE68A',
+              color: '#FFD700',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 215, 0, 0.4)',
               p: 0.8,
               borderRadius: '8px',
+              minWidth: '38px',
+              minHeight: '38px',
               '&:hover': {
-                backgroundColor: '#FEF3C7',
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
               },
             }}
           >
@@ -315,9 +322,9 @@ export const Navbar: FC<NavbarProps> = ({
             paper: {
               sx: {
                 borderRadius: '12px',
-                minWidth: '170px',
-                boxShadow: '0 8px 30px rgba(217, 119, 6, 0.15)',
-                border: '1.5px solid #FDE68A',
+                minWidth: '180px',
+                boxShadow: '0 8px 30px rgba(100, 5, 5, 0.25)',
+                border: '1.5px solid #F59E0B',
                 backgroundColor: '#FFFFFF',
                 mt: 1,
               },
@@ -326,13 +333,13 @@ export const Navbar: FC<NavbarProps> = ({
         >
           <MenuItem disabled sx={{ opacity: '1 !important', py: 1.2 }}>
             <ListItemIcon>
-              <AdminPanelSettingsRoundedIcon sx={{ fontSize: 20, color: '#B91C1C' }} />
+              <AdminPanelSettingsRoundedIcon sx={{ fontSize: 20, color: '#990000' }} />
             </ListItemIcon>
             <Box>
-              <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#1F1714' }}>
+              <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#240808' }}>
                 Administrator
               </Typography>
-              <Typography sx={{ fontSize: '11px', color: '#D97706', fontWeight: 600 }}>
+              <Typography sx={{ fontSize: '11px', color: '#B45309', fontWeight: 600 }}>
                 Logged In
               </Typography>
             </Box>
@@ -346,15 +353,15 @@ export const Navbar: FC<NavbarProps> = ({
             sx={{ py: 1 }}
           >
             <ListItemIcon>
-              <SettingsRoundedIcon sx={{ fontSize: 18, color: '#B91C1C' }} />
+              <SettingsRoundedIcon sx={{ fontSize: 18, color: '#990000' }} />
             </ListItemIcon>
-            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1714' }}>
+            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#240808' }}>
               Software Settings
             </Typography>
           </MenuItem>
-          <MenuItem onClick={handleLogoutClick} sx={{ color: '#DC2626', py: 1 }}>
+          <MenuItem onClick={handleLogoutClick} sx={{ color: '#990000', py: 1 }}>
             <ListItemIcon>
-              <LogoutRoundedIcon sx={{ fontSize: 18, color: '#DC2626' }} />
+              <LogoutRoundedIcon sx={{ fontSize: 18, color: '#990000' }} />
             </ListItemIcon>
             <Typography sx={{ fontSize: '13px', fontWeight: 700 }}>
               Logout
@@ -365,20 +372,19 @@ export const Navbar: FC<NavbarProps> = ({
 
       {/* Mobile Horizontal Touch Tab Bar (Quick thumb scrolling under Navbar on Mobile) */}
       <Box
+        className="touch-scroll"
         sx={{
           display: { xs: 'flex', md: 'none' },
           alignItems: 'center',
           gap: 1,
-          px: 1.5,
+          px: 1.2,
           py: 0.8,
-          backgroundColor: '#FFFFFF',
-          borderBottom: '1px solid #FDE68A',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
+          backgroundColor: '#800A0A',
+          borderBottom: '1.5px solid #F59E0B',
           position: 'sticky',
           top: '58px',
           zIndex: 1090,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
         }}
       >
         {tabs.map((tab) => {
@@ -391,10 +397,10 @@ export const Navbar: FC<NavbarProps> = ({
                 px: 1.4,
                 py: 0.6,
                 borderRadius: '20px',
-                backgroundColor: isActive ? '#DC2626' : '#FFFBEB',
-                color: isActive ? '#FFFFFF' : '#78350F',
-                border: isActive ? '1px solid #B91C1C' : '1px solid #FDE68A',
-                fontSize: '12px',
+                backgroundColor: isActive ? '#FFD700' : 'rgba(255, 255, 255, 0.14)',
+                color: isActive ? '#750909' : '#FEF3C7',
+                border: isActive ? '1px solid #FFD700' : '1px solid rgba(253, 230, 138, 0.3)',
+                fontSize: '12.5px',
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',
@@ -403,6 +409,11 @@ export const Navbar: FC<NavbarProps> = ({
                 gap: 0.6,
                 flexShrink: 0,
                 transition: 'all 0.15s ease',
+                boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.2)' : 'none',
+                minHeight: '34px',
+                '&:active': {
+                  transform: 'scale(0.96)',
+                },
               }}
             >
               {TAB_ICONS[tab]}
@@ -421,8 +432,8 @@ export const Navbar: FC<NavbarProps> = ({
           paper: {
             sx: {
               width: '280px',
-              backgroundColor: '#FEFDF9',
-              borderLeft: '2px solid #FDE68A',
+              backgroundColor: '#FFFDF9',
+              borderLeft: '2px solid #F59E0B',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -435,7 +446,7 @@ export const Navbar: FC<NavbarProps> = ({
           <Box
             sx={{
               p: 2,
-              background: 'linear-gradient(135deg, #DC2626 0%, #991B1B 100%)',
+              background: 'linear-gradient(135deg, #990000 0%, #750909 100%)',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
@@ -444,14 +455,14 @@ export const Navbar: FC<NavbarProps> = ({
             }}
           >
             <Box>
-              <Typography sx={{ fontSize: '15px', fontWeight: 800 }}>
-                {companySettings.companyName || 'Billing & Management'}
+              <Typography sx={{ fontSize: '15px', fontWeight: 800, color: '#FFD700' }}>
+                {companySettings.companyName || 'NARENDIRAA ENTERPRISES'}
               </Typography>
-              <Typography sx={{ fontSize: '11px', color: '#FEF08A', fontWeight: 600 }}>
+              <Typography sx={{ fontSize: '11px', color: '#FEF3C7', fontWeight: 600 }}>
                 Main Navigation
               </Typography>
             </Box>
-            <IconButton onClick={() => setMobileDrawerOpen(false)} sx={{ color: '#FFFFFF' }}>
+            <IconButton onClick={() => setMobileDrawerOpen(false)} sx={{ color: '#FFD700' }}>
               <CloseRoundedIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Box>
@@ -467,15 +478,15 @@ export const Navbar: FC<NavbarProps> = ({
                     sx={{
                       borderRadius: '10px',
                       backgroundColor: isActive ? '#FEF3C7' : 'transparent',
-                      border: isActive ? '1px solid #FDE68A' : '1px solid transparent',
-                      color: isActive ? '#B91C1C' : '#1F1714',
+                      border: isActive ? '1px solid #F59E0B' : '1px solid transparent',
+                      color: isActive ? '#990000' : '#240808',
                       py: 1.2,
                       '&:hover': {
                         backgroundColor: '#FFFBEB',
                       },
                     }}
                   >
-                    <ListItemIcon sx={{ color: isActive ? '#B91C1C' : '#786C58', minWidth: '36px' }}>
+                    <ListItemIcon sx={{ color: isActive ? '#990000' : '#78350F', minWidth: '36px' }}>
                       {TAB_ICONS[tab]}
                     </ListItemIcon>
                     <ListItemText
@@ -500,14 +511,14 @@ export const Navbar: FC<NavbarProps> = ({
               borderRadius: '10px',
               backgroundColor: '#FEF2F2',
               border: '1px solid #FECACA',
-              color: '#DC2626',
+              color: '#990000',
               py: 1,
               '&:hover': {
                 backgroundColor: '#FEE2E2',
               },
             }}
           >
-            <ListItemIcon sx={{ color: '#DC2626', minWidth: '36px' }}>
+            <ListItemIcon sx={{ color: '#990000', minWidth: '36px' }}>
               <LogoutRoundedIcon sx={{ fontSize: 20 }} />
             </ListItemIcon>
             <ListItemText
