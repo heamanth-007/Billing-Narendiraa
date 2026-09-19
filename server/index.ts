@@ -59,8 +59,10 @@ const corsOptions: cors.CorsOptions = {
 
     // Allow any localhost / 127.0.0.1 port or local network IPs
     const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
+    // Allow Vercel deployment domains (*.vercel.app)
+    const isVercel = /\.vercel\.app$/.test(origin) || origin.includes('vercel.app');
 
-    if (isLocalhost || allowedOrigins.includes(origin)) {
+    if (isLocalhost || isVercel || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
