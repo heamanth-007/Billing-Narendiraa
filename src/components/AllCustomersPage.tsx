@@ -20,6 +20,9 @@ import {
   DialogActions,
   TextField,
   Chip,
+  Select,
+  MenuItem,
+  FormControl,
 } from '@mui/material';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -88,8 +91,22 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
   const [recentBills, setRecentBills] = useState<any[]>([]);
   const [loadingRecentBills, setLoadingRecentBills] = useState<boolean>(true);
   const [billSearchTerm, setBillSearchTerm] = useState<string>('');
+  const [selectedCustomerFilter, setSelectedCustomerFilter] = useState<string>('ALL');
   const [printModalOpen, setPrintModalOpen] = useState<boolean>(false);
   const [selectedBillForPrint, setSelectedBillForPrint] = useState<BillPrintData | null>(null);
+
+  // Unique Customer Names for Filtering Bills
+  const uniqueCustomerNames = useMemo(() => {
+    const set = new Set<string>();
+    customers.forEach((c) => {
+      if (c.name && c.name.trim()) set.add(c.name.trim());
+    });
+    recentBills.forEach((b) => {
+      const name = (b.customerName || b.customer || '').trim();
+      if (name) set.add(name);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [customers, recentBills]);
 
   const fetchCustomers = async () => {
     try {
@@ -210,7 +227,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
       billNo: bill.billNo || '',
       date: bill.date || '',
       customerName: bill.customerName || '',
-      customerPhone: bill.customerPhone && bill.customerPhone !== '-' ? bill.customerPhone : (matchedCust?.mobile || matchedCust?.phone || ''),
+      customerPhone: bill.customerPhone && bill.customerPhone !== '-' ? bill.customerPhone : (matchedCust?.mobile || (matchedCust as any)?.phone || ''),
       customerAddress: bill.customerAddress && bill.customerAddress !== '-' ? bill.customerAddress : (matchedCust?.address || ''),
       customerGst: bill.customerGst && bill.customerGst !== '-' && bill.customerGst !== 'N/A' ? bill.customerGst : (matchedCust?.gst || ''),
       companyName:
@@ -252,18 +269,59 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
     });
   }, [customers, searchTerm]);
 
-  // Filtered recent bills
+  // Filtered recent bills by Selected Customer and/or Search Term (including product particulars)
   const filteredRecentBills = useMemo(() => {
-    if (!billSearchTerm.trim()) return recentBills;
-    const term = billSearchTerm.toLowerCase().trim();
-    return recentBills.filter(
-      (b) =>
-        (b.billNo && b.billNo.toLowerCase().includes(term)) ||
-        (b.customerName && b.customerName.toLowerCase().includes(term)) ||
-        (b.companyName && b.companyName.toLowerCase().includes(term)) ||
-        (b.date && b.date.toLowerCase().includes(term))
-    );
-  }, [recentBills, billSearchTerm]);
+    return recentBills.filter((b) => {
+      // 1. Customer Dropdown Filter
+      if (selectedCustomerFilter && selectedCustomerFilter !== 'ALL') {
+        const billCust = (b.customerName || b.customer || '').trim().toLowerCase();
+        const targetCust = selectedCustomerFilter.trim().toLowerCase();
+        if (billCust !== targetCust) {
+          return false;
+        }
+      }
+
+      // 2. Search Term Filter across Bill No, Customer Name, Company, Date, Phone, and Product Particulars
+      if (billSearchTerm.trim()) {
+        const term = billSearchTerm.toLowerCase().trim();
+        const billNo = String(b.billNo || '').toLowerCase();
+        const customerName = String(b.customerName || b.customer || '').toLowerCase();
+        const companyName = String(b.companyName || '').toLowerCase();
+        const date = String(b.date || '').toLowerCase();
+        const phone = String(b.customerPhone || b.phone || '').toLowerCase();
+
+        const matchesMain =
+          billNo.includes(term) ||
+          customerName.includes(term) ||
+          companyName.includes(term) ||
+          date.includes(term) ||
+          phone.includes(term);
+
+        const matchesProducts =
+          Array.isArray(b.products) &&
+          b.products.some((p: any) => {
+            const particular = String(p.particular || p.name || '').toLowerCase();
+            const pktUnit = String(p.pktUnit || p.unit || '').toLowerCase();
+            const rate = String(p.rate || '');
+            const qty = String(p.quantity || '');
+            const amount = String(p.amount || '');
+            return (
+              particular.includes(term) ||
+              pktUnit.includes(term) ||
+              rate.includes(term) ||
+              qty.includes(term) ||
+              amount.includes(term)
+            );
+          });
+
+        if (!matchesMain && !matchesProducts) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [recentBills, selectedCustomerFilter, billSearchTerm]);
 
   return (
     <Box
@@ -832,7 +890,8 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                                   variant="contained"
                                   disableElevation
                                   onClick={() => {
-                                    setBillSearchTerm(customer.name);
+                                    setSelectedCustomerFilter(customer.name);
+                                    setBillSearchTerm('');
                                     setActiveView('bills');
                                   }}
                                   startIcon={<ReceiptLongRoundedIcon sx={{ fontSize: '15px !important' }} />}
@@ -1055,7 +1114,8 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                           variant="contained"
                           disableElevation
                           onClick={() => {
-                            setBillSearchTerm(customer.name);
+                            setSelectedCustomerFilter(customer.name);
+                            setBillSearchTerm('');
                             setActiveView('bills');
                           }}
                           startIcon={<ReceiptLongRoundedIcon sx={{ fontSize: 14 }} />}
@@ -1157,8 +1217,8 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
               px: { xs: 2, sm: 3 },
               py: 1.5,
               display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              alignItems: { xs: 'stretch', sm: 'center' },
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: { xs: 'stretch', md: 'center' },
               justifyContent: 'space-between',
               gap: 1.5,
               minHeight: '56px',
@@ -1180,12 +1240,81 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                   borderRadius: '10px',
                 }}
               >
-                {filteredRecentBills.length} bills
+                {filteredRecentBills.length} {filteredRecentBills.length === 1 ? 'bill' : 'bills'}
               </Typography>
             </Box>
 
-            {/* Search Box & Refresh */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: { xs: '100%', sm: 'auto' } }}>
+            {/* Filter Dropdown, Search Box & Refresh */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.2,
+                flexWrap: 'wrap',
+                width: { xs: '100%', md: 'auto' },
+              }}
+            >
+              {/* Customer Selector Dropdown */}
+              <FormControl
+                size="small"
+                sx={{
+                  minWidth: { xs: '100%', sm: '180px', md: '200px' },
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '8px',
+                  '& .MuiOutlinedInput-root': {
+                    height: '36px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: '#1F1714',
+                    borderRadius: '8px',
+                    '& fieldset': {
+                      borderColor: '#FDE68A',
+                      borderWidth: '1.5px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#F59E0B',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#B91C1C',
+                    },
+                  },
+                }}
+              >
+                <Select
+                  value={selectedCustomerFilter}
+                  onChange={(e) => setSelectedCustomerFilter(e.target.value)}
+                  displayEmpty
+                  renderValue={(val) => {
+                    if (val === 'ALL' || !val) {
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, color: '#786C58' }}>
+                          <PeopleAltRoundedIcon sx={{ fontSize: 16, color: '#D97706' }} />
+                          <span>All Customers</span>
+                        </Box>
+                      );
+                    }
+                    return (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, color: '#B91C1C', fontWeight: 800 }}>
+                        <PeopleAltRoundedIcon sx={{ fontSize: 16, color: '#B91C1C' }} />
+                        <span style={{ maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {val}
+                        </span>
+                      </Box>
+                    );
+                  }}
+                >
+                  <MenuItem value="ALL" sx={{ fontSize: '13px', fontWeight: 700 }}>
+                    👥 All Customers ({recentBills.length} total bills)
+                  </MenuItem>
+                  {uniqueCustomerNames.map((cName) => (
+                    <MenuItem key={cName} value={cName} sx={{ fontSize: '13px', fontWeight: 600 }}>
+                      {cName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* Free-text Search Box */}
               <Box
                 sx={{
                   display: 'flex',
@@ -1194,13 +1323,13 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                   borderRadius: '8px',
                   px: 1.2,
                   height: '36px',
-                  width: { xs: '100%', sm: '220px' },
+                  width: { xs: '100%', sm: '220px', md: '240px' },
                   border: '1.5px solid #FDE68A',
                 }}
               >
                 <SearchRoundedIcon sx={{ color: '#D97706', fontSize: 18, mr: 0.8 }} />
                 <InputBase
-                  placeholder="Search bills..."
+                  placeholder="Search bill no, particular..."
                   value={billSearchTerm}
                   onChange={(e) => setBillSearchTerm(e.target.value)}
                   sx={{
@@ -1239,6 +1368,72 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
             </Box>
           </Box>
 
+          {/* Active Filter Bar */}
+          {(selectedCustomerFilter !== 'ALL' || billSearchTerm) && (
+            <Box
+              sx={{
+                backgroundColor: '#FEF3C7',
+                borderBottom: '1px solid #FDE68A',
+                px: { xs: 2, sm: 3 },
+                py: 0.8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
+                Active Filters:
+              </Typography>
+              {selectedCustomerFilter !== 'ALL' && (
+                <Chip
+                  label={`Customer: ${selectedCustomerFilter}`}
+                  size="small"
+                  onDelete={() => setSelectedCustomerFilter('ALL')}
+                  sx={{
+                    backgroundColor: '#B91C1C',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    fontSize: '11.5px',
+                    '& .MuiChip-deleteIcon': { color: '#FFFFFF', '&:hover': { color: '#FDE68A' } },
+                  }}
+                />
+              )}
+              {billSearchTerm && (
+                <Chip
+                  label={`Search: "${billSearchTerm}"`}
+                  size="small"
+                  onDelete={() => setBillSearchTerm('')}
+                  sx={{
+                    backgroundColor: '#D97706',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    fontSize: '11.5px',
+                    '& .MuiChip-deleteIcon': { color: '#FFFFFF', '&:hover': { color: '#FEF3C7' } },
+                  }}
+                />
+              )}
+              <Button
+                size="small"
+                onClick={() => {
+                  setSelectedCustomerFilter('ALL');
+                  setBillSearchTerm('');
+                }}
+                sx={{
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  color: '#92400E',
+                  p: 0,
+                  minWidth: 'auto',
+                  textDecoration: 'underline',
+                }}
+              >
+                Clear All
+              </Button>
+            </Box>
+          )}
+
           {/* Desktop View: Recent Bills Table */}
           <TableContainer sx={{ display: { xs: 'none', md: 'block' }, maxHeight: '520px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <Table stickyHeader sx={{ minWidth: 750 }} aria-label="recent bills table">
@@ -1251,7 +1446,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                     DATE
                   </TableCell>
                   <TableCell sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB' }}>
-                    CUSTOMER NAME
+                    CUSTOMER & PARTICULAR ITEMS
                   </TableCell>
                   <TableCell align="center" sx={{ fontWeight: 800, fontSize: '12px', color: '#7C2D12', backgroundColor: '#FFFBEB', width: '90px' }}>
                     ITEMS
@@ -1274,7 +1469,9 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                 ) : filteredRecentBills.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ py: 6, color: '#786C58' }}>
-                      {billSearchTerm ? `No bills matching "${billSearchTerm}" found.` : 'No bills created yet.'}
+                      {selectedCustomerFilter !== 'ALL' || billSearchTerm
+                        ? `No bills found for the selected customer/particular filter.`
+                        : 'No bills created yet.'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -1282,6 +1479,10 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                     const isLast = index === filteredRecentBills.length - 1;
                     const totalAmt = parseFloat(String(bill.total || bill.amount || '0').replace(/,/g, '')) || 0;
                     const prodCount = (bill.products || []).length;
+                    const particularList = (bill.products || [])
+                      .map((p: any) => p.particular || p.name)
+                      .filter(Boolean)
+                      .join(', ');
 
                     return (
                       <TableRow key={bill._id || bill.id || index} sx={{ '&:hover': { backgroundColor: '#FEFDF5' } }}>
@@ -1291,8 +1492,27 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                         <TableCell sx={{ fontSize: '13px', fontWeight: 600, color: '#57463A', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
                           {bill.date}
                         </TableCell>
-                        <TableCell sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714', borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
-                          {bill.customerName}
+                        <TableCell sx={{ borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
+                          <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714', lineHeight: 1.2 }}>
+                            {bill.customerName}
+                          </Typography>
+                          {particularList && (
+                            <Typography
+                              sx={{
+                                fontSize: '11.5px',
+                                fontWeight: 500,
+                                color: '#786C58',
+                                mt: 0.4,
+                                maxWidth: '340px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                              title={particularList}
+                            >
+                              📦 {particularList}
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell align="center" sx={{ borderBottom: isLast ? 'none' : '1px solid #F7EEDB' }}>
                           <Chip
@@ -1378,13 +1598,19 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
             ) : filteredRecentBills.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 4, color: '#786C58' }}>
                 <Typography sx={{ fontSize: '14px', fontWeight: 600 }}>
-                  {billSearchTerm ? `No bills matching "${billSearchTerm}" found.` : 'No bills created yet.'}
+                  {selectedCustomerFilter !== 'ALL' || billSearchTerm
+                    ? `No bills found for the selected customer/particular filter.`
+                    : 'No bills created yet.'}
                 </Typography>
               </Box>
             ) : (
               filteredRecentBills.map((bill, index) => {
                 const totalAmt = parseFloat(String(bill.total || bill.amount || '0').replace(/,/g, '')) || 0;
                 const prodCount = (bill.products || []).length;
+                const particularList = (bill.products || [])
+                  .map((p: any) => p.particular || p.name)
+                  .filter(Boolean)
+                  .join(', ');
 
                 return (
                   <Paper
@@ -1410,15 +1636,22 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                       </Typography>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1F1714' }}>
-                        {bill.customerName}
-                      </Typography>
-                      <Chip
-                        label={`${prodCount} ${prodCount === 1 ? 'item' : 'items'}`}
-                        size="small"
-                        sx={{ fontSize: '11px', fontWeight: 700, backgroundColor: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}
-                      />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                        <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1F1714' }}>
+                          {bill.customerName}
+                        </Typography>
+                        <Chip
+                          label={`${prodCount} ${prodCount === 1 ? 'item' : 'items'}`}
+                          size="small"
+                          sx={{ fontSize: '11px', fontWeight: 700, backgroundColor: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' }}
+                        />
+                      </Box>
+                      {particularList && (
+                        <Typography sx={{ fontSize: '11.5px', color: '#786C58', fontWeight: 500 }}>
+                          📦 {particularList}
+                        </Typography>
+                      )}
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #FEF3C7' }}>
@@ -1462,14 +1695,12 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                             fontSize: '11.5px',
                             fontWeight: 700,
                             textTransform: 'none',
-                            backgroundColor: '#FEF3C7',
-                            color: '#7C2D12',
-                            border: '1px solid #FDE68A',
-                            boxShadow: 'none',
+                            backgroundColor: '#1E40AF',
+                            color: '#FFFFFF',
                             borderRadius: '6px',
                             py: 0.5,
                             px: 1,
-                            '&:hover': { backgroundColor: '#FDE68A' },
+                            '&:hover': { backgroundColor: '#1D4ED8' },
                           }}
                         >
                           Print
@@ -1487,7 +1718,7 @@ export const AllCustomersPage: FC<AllCustomersPageProps> = ({
                             '&:hover': { color: '#FFFFFF', backgroundColor: '#DC2626' },
                           }}
                         >
-                          <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                          <DeleteOutlineRoundedIcon sx={{ fontSize: 14 }} />
                         </IconButton>
                       </Box>
                     </Box>

@@ -93,7 +93,7 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
   let packingAmt = 0;
   let packingLabel = 'Packing Charges';
   if (packNum > 0) {
-    if (rawPackStr.includes('%')) {
+    if (rawPackStr.includes('%') || packNum <= 100) {
       packingAmt = (subtotal * packNum) / 100;
       packingLabel = `Packing Charges (${packNum}%)`;
     } else {
@@ -131,13 +131,13 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
 
   const displayCompanyName =
     bill.companyName &&
-    bill.companyName.trim() !== '' &&
-    bill.companyName !== 'General'
+      bill.companyName.trim() !== '' &&
+      bill.companyName !== 'General'
       ? bill.companyName
       : storeSettings.companyName || 'NARENDIRAA ENTERPRISES';
 
   const isTaxActive = Boolean(storeSettings.enableTax) || (parseFloat(String(bill.tax || '0').replace(/[^0-9.]/g, '')) > 0);
-  
+
   // Construct complete address without duplicating city
   const city = storeSettings.city || 'Sivakasi';
   let addr = storeSettings.address || '';
@@ -176,367 +176,377 @@ export const BillPrintTemplate: React.FC<BillPrintTemplateProps> = ({ bill }) =>
       style={{
         width: '100%',
         maxWidth: '800px',
+        minHeight: '280mm',
         margin: '0 auto',
         backgroundColor: '#FFFFFF',
         color: '#000000',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         border: '1.5px solid #000000',
         boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
         pageBreakInside: 'avoid',
       }}
     >
-      {/* Top Header: Centered Company Name, Tagline, Logo & Complete Details */}
-      <div
-        style={{
-          textAlign: 'center',
-          padding: '8px 12px 6px 12px',
-          borderBottom: '1.5px solid #000000',
-        }}
-      >
-        {storeSettings.tagline && (
-          <div
-            style={{
-              fontSize: '11.5px',
-              fontWeight: 700,
-              color: '#334155',
-              marginBottom: '2px',
-              letterSpacing: '0.02em',
-            }}
-          >
-            {storeSettings.tagline}
-          </div>
-        )}
-        {storeSettings.logoUrl && (
-          <div style={{ marginBottom: '3px' }}>
-            <img
-              src={storeSettings.logoUrl}
-              alt="Logo"
-              style={{ maxHeight: '44px', maxWidth: '150px', objectFit: 'contain' }}
-            />
-          </div>
-        )}
-        <h1
-          style={{
-            fontSize: '23px',
-            fontWeight: 800,
-            color: '#000000',
-            margin: '0 0 2px 0',
-            letterSpacing: '-0.01em',
-            textTransform: 'uppercase',
-          }}
-        >
-          {displayCompanyName}
-        </h1>
-        {fullAddressLine && (
-          <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E293B' }}>
-            {fullAddressLine}
-          </div>
-        )}
-        {contactLine && (
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', marginTop: '2px' }}>
-            {contactLine}
-          </div>
-        )}
-        {legalLine && (
-          <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', marginTop: '2px' }}>
-            {legalLine}
-          </div>
-        )}
-      </div>
-
-      {/* Bill Metadata Block: Balanced 2 Columns */}
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          borderBottom: '1.5px solid #000000',
-          fontSize: '12px',
-        }}
-      >
-        <tbody>
-          <tr>
-            <td style={{ width: '50%', border: '1px solid #000000', padding: '6px 8px', verticalAlign: 'top' }}>
-              <div style={{ display: 'flex', marginBottom: '3px' }}>
-                <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>Customer:</span>
-                <strong style={{ color: '#000000', fontSize: '13px' }}>{bill.customerName || '-'}</strong>
-              </div>
-              <div style={{ display: 'flex', marginBottom: '3px' }}>
-                <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>Address:</span>
-                <span style={{ fontSize: '11.5px', color: '#1E293B' }}>{bill.customerAddress && bill.customerAddress !== '-' ? bill.customerAddress : '-'}</span>
-              </div>
-              <div style={{ display: 'flex', marginBottom: '3px' }}>
-                <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>Phone:</span>
-                <strong style={{ color: '#000000' }}>{bill.customerPhone && bill.customerPhone !== '-' ? bill.customerPhone : '-'}</strong>
-              </div>
-              {bill.customerGst && bill.customerGst !== '-' && bill.customerGst !== 'N/A' && (
-                <div style={{ display: 'flex' }}>
-                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>GSTIN:</span>
-                  <strong style={{ color: '#000000' }}>{bill.customerGst}</strong>
-                </div>
-              )}
-            </td>
-            <td style={{ width: '50%', border: '1px solid #000000', padding: '5px 8px', verticalAlign: 'top' }}>
-              <div style={{ display: 'flex', marginBottom: '2px' }}>
-                <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Bill No:</span>
-                <strong style={{ color: '#000000' }}>#{bill.billNo || '-'}</strong>
-              </div>
-              <div style={{ display: 'flex', marginBottom: '2px' }}>
-                <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Date:</span>
-                <strong style={{ color: '#000000' }}>{bill.date || '-'}</strong>
-              </div>
-              <div style={{ display: 'flex', marginBottom: '2px' }}>
-                <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Transport:</span>
-                <strong style={{ color: '#000000' }}>{transportDisplayName}</strong>
-              </div>
-              <div style={{ display: 'flex' }}>
-                <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Total Cases:</span>
-                <strong style={{ color: '#000000' }}>{computedCases}</strong>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* Products Table with Boxed Rows */}
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          borderBottom: '1.5px solid #000000',
-          fontSize: '12px',
-        }}
-      >
-        <thead>
-          <tr style={{ backgroundColor: '#F1F5F9' }}>
-            <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', width: '38px', fontWeight: 700, fontSize: '11.5px' }}>
-              S.No
-            </th>
-            <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'left', fontWeight: 700, fontSize: '11.5px' }}>
-              Particulars / Description of Goods
-            </th>
-            <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', width: '65px', fontWeight: 700, fontSize: '11.5px' }}>
-              Quantity
-            </th>
-            <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'right', width: '75px', fontWeight: 700, fontSize: '11.5px' }}>
-              Rate (₹)
-            </th>
-            <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', width: '65px', fontWeight: 700, fontSize: '11.5px' }}>
-              Unit
-            </th>
-            <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'right', width: '95px', fontWeight: 700, fontSize: '11.5px' }}>
-              Amount (₹)
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {(bill.products || []).length === 0 ? (
-            <tr>
-              <td colSpan={6} style={{ border: '1px solid #000000', textAlign: 'center', padding: '12px', color: '#64748B' }}>
-                No product items in bill
-              </td>
-            </tr>
-          ) : (
-            (bill.products || []).map((item, idx) => {
-              const numAmt = parseFloat(String(item.amount).replace(/,/g, '')) || 0;
-              const numRate = parseFloat(String(item.rate).replace(/,/g, '')) || 0;
-              return (
-                <tr key={idx} style={{ pageBreakInside: 'avoid' }}>
-                  <td style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'center' }}>{idx + 1}</td>
-                  <td style={{ border: '1px solid #000000', padding: '5px 8px', fontWeight: 600 }}>{item.particular || '-'}</td>
-                  <td style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'center' }}>{item.quantity || '-'}</td>
-                  <td style={{ border: '1px solid #000000', padding: '5px 8px', textAlign: 'right' }}>
-                    {numRate > 0 ? numRate.toFixed(2) : (item.rate || '-')}
-                  </td>
-                  <td style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'center' }}>
-                    {item.pktUnit && item.pktUnit !== '-' ? item.pktUnit : ''}
-                  </td>
-                  <td style={{ border: '1px solid #000000', padding: '5px 8px', textAlign: 'right', fontWeight: 700 }}>
-                    {numAmt.toFixed(2)}
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-
-      {/* Bottom Split Section */}
-      <div
-        style={{
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'stretch',
-          pageBreakInside: 'avoid',
-          backgroundColor: '#FFFFFF',
-        }}
-      >
-        {/* Left Column: Amount in Words, Receipt & Terms */}
+      {/* Top Content: Header, Meta & Products Table */}
+      <div style={{ width: '100%' }}>
+        {/* Top Header: Centered Company Name, Tagline, Logo & Complete Details */}
         <div
           style={{
-            flex: '1 1 54%',
-            borderRight: '1.5px solid #000000',
-            padding: '8px 10px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxSizing: 'border-box',
+            textAlign: 'center',
+            padding: '8px 12px 6px 12px',
+            borderBottom: '1.5px solid #000000',
           }}
         >
-          <div>
+          {storeSettings.tagline && (
             <div
               style={{
                 fontSize: '11.5px',
-                color: '#0F172A',
-                lineHeight: '1.35',
-                padding: '4px 6px',
-                background: '#F8FAFC',
-                border: '1px dashed #CBD5E1',
-                borderRadius: '4px',
-                marginBottom: '6px',
+                fontWeight: 700,
+                color: '#334155',
+                marginBottom: '2px',
+                letterSpacing: '0.02em',
               }}
             >
-              <span style={{ fontWeight: 700, color: '#475569' }}>Amount in Words:</span><br />
-              <strong>{amountInWords}</strong>
+              {storeSettings.tagline}
             </div>
-
-            {receiptSrc && (
+          )}
+          {storeSettings.logoUrl && (
+            <div style={{ marginBottom: '3px' }}>
               <img
-                src={receiptSrc}
-                alt="Transport Receipt"
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '130px',
-                  objectFit: 'contain',
-                  display: 'block',
-                  margin: '4px auto',
-                }}
+                src={storeSettings.logoUrl}
+                alt="Logo"
+                style={{ maxHeight: '44px', maxWidth: '150px', objectFit: 'contain' }}
               />
-            )}
-          </div>
-
-          <div style={{ fontSize: '10px', color: '#64748B', lineHeight: '1.3', marginTop: '4px' }}>
-            • Goods once sold will not be taken back or replaced.<br />
-            • All disputes are subject to Sivakasi Jurisdiction only.
-          </div>
-        </div>
-
-        {/* Right Column: Calculation Summary Table */}
-        <div style={{ flex: '1 1 46%', padding: 0, boxSizing: 'border-box' }}>
-          <table
+            </div>
+          )}
+          <h1
             style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '12px',
+              fontSize: '23px',
+              fontWeight: 800,
+              color: '#000000',
+              margin: '0 0 2px 0',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
             }}
           >
-            <tbody>
-              <tr>
-                <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
-                  Particular Amount
-                </td>
-                <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
-                  {subtotal.toFixed(2)}
-                </td>
-              </tr>
-              {discountAmt > 0 && (
-                <tr>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
-                    {discountLabel}
-                  </td>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
-                    -{discountAmt.toFixed(2)}
-                  </td>
-                </tr>
-              )}
-              {transportAmt > 0 && (
-                <tr>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
-                    Transport Charges
-                  </td>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
-                    +{transportAmt.toFixed(2)}
-                  </td>
-                </tr>
-              )}
-              {packingAmt > 0 && (
-                <tr>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
-                    {packingLabel}
-                  </td>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
-                    +{packingAmt.toFixed(2)}
-                  </td>
-                </tr>
-              )}
-              {taxAmt > 0 && (
-                <tr>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
-                    {taxLabel}
-                  </td>
-                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
-                    +{taxAmt.toFixed(2)}
-                  </td>
-                </tr>
-              )}
-              <tr style={{ backgroundColor: '#F1F5F9' }}>
-                <td style={{ border: '1px solid #000000', borderTop: '1.5px solid #000000', padding: '6px 8px', fontWeight: 800 }}>
-                  Grand Total
-                </td>
-                <td style={{ border: '1px solid #000000', borderTop: '1.5px solid #000000', padding: '6px 8px', textAlign: 'right', fontSize: '13px', fontWeight: 800 }}>
-                  {formattedTotal}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            {displayCompanyName}
+          </h1>
+          {fullAddressLine && (
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E293B' }}>
+              {fullAddressLine}
+            </div>
+          )}
+          {contactLine && (
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', marginTop: '2px' }}>
+              {contactLine}
+            </div>
+          )}
+          {legalLine && (
+            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#475569', marginTop: '2px' }}>
+              {legalLine}
+            </div>
+          )}
         </div>
+
+        {/* Bill Metadata Block: Balanced 2 Columns */}
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            borderBottom: '1.5px solid #000000',
+            fontSize: '12px',
+          }}
+        >
+          <tbody>
+            <tr>
+              <td style={{ width: '50%', border: '1px solid #000000', padding: '6px 8px', verticalAlign: 'top' }}>
+                <div style={{ display: 'flex', marginBottom: '3px' }}>
+                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>Customer:</span>
+                  <strong style={{ color: '#000000', fontSize: '13px' }}>{bill.customerName || '-'}</strong>
+                </div>
+                <div style={{ display: 'flex', marginBottom: '3px' }}>
+                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>Address:</span>
+                  <span style={{ fontSize: '11.5px', color: '#1E293B' }}>{bill.customerAddress && bill.customerAddress !== '-' ? bill.customerAddress : '-'}</span>
+                </div>
+                <div style={{ display: 'flex', marginBottom: '3px' }}>
+                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>Phone:</span>
+                  <strong style={{ color: '#000000' }}>{bill.customerPhone && bill.customerPhone !== '-' ? bill.customerPhone : '-'}</strong>
+                </div>
+                {bill.customerGst && bill.customerGst !== '-' && bill.customerGst !== 'N/A' && (
+                  <div style={{ display: 'flex' }}>
+                    <span style={{ color: '#475569', fontWeight: 600, minWidth: '85px', flexShrink: 0 }}>GSTIN:</span>
+                    <strong style={{ color: '#000000' }}>{bill.customerGst}</strong>
+                  </div>
+                )}
+              </td>
+              <td style={{ width: '50%', border: '1px solid #000000', padding: '5px 8px', verticalAlign: 'top' }}>
+                <div style={{ display: 'flex', marginBottom: '2px' }}>
+                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Bill No:</span>
+                  <strong style={{ color: '#000000' }}>#{bill.billNo || '-'}</strong>
+                </div>
+                <div style={{ display: 'flex', marginBottom: '2px' }}>
+                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Date:</span>
+                  <strong style={{ color: '#000000' }}>{bill.date || '-'}</strong>
+                </div>
+                <div style={{ display: 'flex', marginBottom: '2px' }}>
+                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Transport:</span>
+                  <strong style={{ color: '#000000' }}>{transportDisplayName}</strong>
+                </div>
+                <div style={{ display: 'flex' }}>
+                  <span style={{ color: '#475569', fontWeight: 600, minWidth: '80px', flexShrink: 0 }}>Total Cases:</span>
+                  <strong style={{ color: '#000000' }}>{computedCases}</strong>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Products Table with Boxed Rows */}
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            borderBottom: '1.5px solid #000000',
+            fontSize: '12px',
+          }}
+        >
+          <thead>
+            <tr style={{ backgroundColor: '#F1F5F9' }}>
+              <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', width: '38px', fontWeight: 700, fontSize: '11.5px' }}>
+                S.No
+              </th>
+              <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'left', fontWeight: 700, fontSize: '11.5px' }}>
+                Particulars / Description of Goods
+              </th>
+              <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', width: '65px', fontWeight: 700, fontSize: '11.5px' }}>
+                Quantity
+              </th>
+              <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'right', width: '75px', fontWeight: 700, fontSize: '11.5px' }}>
+                Rate (₹)
+              </th>
+              <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', width: '65px', fontWeight: 700, fontSize: '11.5px' }}>
+                Unit
+              </th>
+              <th style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'right', width: '95px', fontWeight: 700, fontSize: '11.5px' }}>
+                Amount (₹)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {(bill.products || []).length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ border: '1px solid #000000', textAlign: 'center', padding: '12px', color: '#64748B' }}>
+                  No product items in bill
+                </td>
+              </tr>
+            ) : (
+              (bill.products || []).map((item, idx) => {
+                const numAmt = parseFloat(String(item.amount).replace(/,/g, '')) || 0;
+                const numRate = parseFloat(String(item.rate).replace(/,/g, '')) || 0;
+                return (
+                  <tr key={idx} style={{ pageBreakInside: 'avoid' }}>
+                    <td style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ border: '1px solid #000000', padding: '5px 8px', fontWeight: 600 }}>{item.particular || '-'}</td>
+                    <td style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'center' }}>{item.quantity || '-'}</td>
+                    <td style={{ border: '1px solid #000000', padding: '5px 8px', textAlign: 'right' }}>
+                      {numRate > 0 ? numRate.toFixed(2) : (item.rate || '-')}
+                    </td>
+                    <td style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'center' }}>
+                      {item.pktUnit && item.pktUnit !== '-' ? item.pktUnit : ''}
+                    </td>
+                    <td style={{ border: '1px solid #000000', padding: '5px 8px', textAlign: 'right', fontWeight: 700 }}>
+                      {numAmt.toFixed(2)}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Signatory Bar */}
-      <div
-        style={{
-          borderTop: '1.5px solid #000000',
-          padding: '6px 12px 6px 12px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          pageBreakInside: 'avoid',
-          backgroundColor: '#FFFFFF',
-        }}
-      >
-        <div style={{ textAlign: 'left' }}>
-          <span
+      {/* Bottom Fitted Section: Calculation, Words, Terms & Signatures */}
+      <div style={{ width: '100%', marginTop: 'auto', borderTop: '1.5px solid #000000' }}>
+        {/* Bottom Split Section */}
+        <div
+          style={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'stretch',
+            pageBreakInside: 'avoid',
+            backgroundColor: '#FFFFFF',
+          }}
+        >
+          {/* Left Column: Amount in Words, Receipt & Terms */}
+          <div
             style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              color: '#000000',
-              borderTop: '1px dashed #000000',
-              paddingTop: '3px',
-              display: 'inline-block',
-              minWidth: '120px',
+              flex: '1 1 54%',
+              borderRight: '1.5px solid #000000',
+              padding: '8px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxSizing: 'border-box',
             }}
           >
-            Customer's Signature
-          </span>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '24px' }}>
-            For {displayCompanyName}
+            <div>
+              <div
+                style={{
+                  fontSize: '11.5px',
+                  color: '#0F172A',
+                  lineHeight: '1.35',
+                  padding: '4px 6px',
+                  background: '#F8FAFC',
+                  border: '1px dashed #CBD5E1',
+                  borderRadius: '4px',
+                  marginBottom: '6px',
+                }}
+              >
+                <span style={{ fontWeight: 700, color: '#475569' }}>Amount in Words:</span><br />
+                <strong>{amountInWords}</strong>
+              </div>
+
+              {receiptSrc && (
+                <img
+                  src={receiptSrc}
+                  alt="Transport Receipt"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '130px',
+                    objectFit: 'contain',
+                    display: 'block',
+                    margin: '4px auto',
+                  }}
+                />
+              )}
+            </div>
+
+            <div style={{ fontSize: '10px', color: '#64748B', lineHeight: '1.3', marginTop: '4px' }}>
+              • Goods once sold will not be taken back or replaced.<br />
+              • All disputes are subject to Sivakasi Jurisdiction only.
+            </div>
           </div>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              color: '#000000',
-              borderTop: '1px dashed #000000',
-              paddingTop: '3px',
-              display: 'inline-block',
-              minWidth: '150px',
-              textAlign: 'center',
-            }}
-          >
-            Authorized Signatory
-          </span>
+
+          {/* Right Column: Calculation Summary Table */}
+          <div style={{ flex: '1 1 46%', padding: 0, boxSizing: 'border-box' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '12px',
+              }}
+            >
+              <tbody>
+                <tr>
+                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
+                    Particular Amount
+                  </td>
+                  <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
+                    {subtotal.toFixed(2)}
+                  </td>
+                </tr>
+                {discountAmt > 0 && (
+                  <tr>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
+                      {discountLabel}
+                    </td>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
+                      -{discountAmt.toFixed(2)}
+                    </td>
+                  </tr>
+                )}
+                {transportAmt > 0 && (
+                  <tr>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
+                      Transport Charges
+                    </td>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
+                      +{transportAmt.toFixed(2)}
+                    </td>
+                  </tr>
+                )}
+                {packingAmt > 0 && (
+                  <tr>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
+                      {packingLabel}
+                    </td>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
+                      +{packingAmt.toFixed(2)}
+                    </td>
+                  </tr>
+                )}
+                {taxAmt > 0 && (
+                  <tr>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', fontWeight: 600, color: '#334155' }}>
+                      {taxLabel}
+                    </td>
+                    <td style={{ border: '1px solid #000000', padding: '4.5px 8px', textAlign: 'right', fontWeight: 700, color: '#000000' }}>
+                      +{taxAmt.toFixed(2)}
+                    </td>
+                  </tr>
+                )}
+                <tr style={{ backgroundColor: '#F1F5F9' }}>
+                  <td style={{ border: '1px solid #000000', borderTop: '1.5px solid #000000', padding: '6px 8px', fontWeight: 800 }}>
+                    Grand Total
+                  </td>
+                  <td style={{ border: '1px solid #000000', borderTop: '1.5px solid #000000', padding: '6px 8px', textAlign: 'right', fontSize: '13px', fontWeight: 800 }}>
+                    {formattedTotal}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Signatory Bar */}
+        <div
+          style={{
+            borderTop: '1.5px solid #000000',
+            padding: '6px 12px 6px 12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            pageBreakInside: 'avoid',
+            backgroundColor: '#FFFFFF',
+          }}
+        >
+          <div style={{ textAlign: 'left' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#000000',
+                borderTop: '1px dashed #000000',
+                paddingTop: '3px',
+                display: 'inline-block',
+                minWidth: '120px',
+              }}
+            >
+              Customer's Signature
+            </span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '24px' }}>
+              For {displayCompanyName}
+            </div>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#000000',
+                borderTop: '1px dashed #000000',
+                paddingTop: '3px',
+                display: 'inline-block',
+                minWidth: '150px',
+                textAlign: 'center',
+              }}
+            >
+              Authorized Signatory
+            </span>
+          </div>
         </div>
       </div>
     </div>

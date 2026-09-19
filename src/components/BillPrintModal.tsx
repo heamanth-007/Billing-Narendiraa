@@ -55,7 +55,7 @@ export const BillPrintModal: React.FC<BillPrintModalProps> = ({ open, onClose, b
             }
             @page {
               size: A4 portrait;
-              margin: 10mm;
+              margin: 6mm 8mm;
             }
           }
         `}

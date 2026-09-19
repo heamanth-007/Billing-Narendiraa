@@ -39,14 +39,16 @@ export const getNextBillNo = async (_req: Request, res: Response, next: NextFunc
     let maxNum = 0;
     for (const p of allParticulars) {
       if (p.billNo) {
-        const match = p.billNo.match(/\d+/);
-        if (match) {
-          const num = parseInt(match[0], 10);
-          if (num > maxNum) maxNum = num;
+        const matches = String(p.billNo).match(/\d+/g);
+        if (matches && matches.length > 0) {
+          for (const m of matches) {
+            const num = parseInt(m, 10);
+            if (!isNaN(num) && num > maxNum) maxNum = num;
+          }
         }
       }
     }
-    const nextBillNo = (maxNum + 1).toString().padStart(4, '0');
+    const nextBillNo = maxNum > 0 ? (maxNum + 1).toString().padStart(4, '0') : '0001';
     res.status(200).json({ success: true, data: { nextBillNo } });
   } catch (error) {
     next(error);
@@ -83,14 +85,16 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
       let maxNum = 0;
       for (const p of allParticulars) {
         if (p.billNo) {
-          const match = p.billNo.match(/\d+/);
-          if (match) {
-            const num = parseInt(match[0], 10);
-            if (num > maxNum) maxNum = num;
+          const matches = String(p.billNo).match(/\d+/g);
+          if (matches && matches.length > 0) {
+            for (const m of matches) {
+              const num = parseInt(m, 10);
+              if (!isNaN(num) && num > maxNum) maxNum = num;
+            }
           }
         }
       }
-      finalBillNo = (maxNum + 1).toString().padStart(4, '0');
+      finalBillNo = maxNum > 0 ? (maxNum + 1).toString().padStart(4, '0') : '0001';
     }
 
     const trimmedCustName = (customerName || 'General').trim();

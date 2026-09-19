@@ -146,7 +146,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
   });
   const [tax, setTax] = useState<string>(() => {
     if (editingBill) return String(editingBill.tax ?? '0');
-    return draft.tax ?? '0';
+    return draft.tax ?? (storeSettings.defaultTaxRate || '0');
   });
 
   // Product Entry Form State
@@ -180,6 +180,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
       setCustomerName(editingBill.customerName || '');
       setCustomerPhone(editingBill.customerPhone || '');
       setCustomerAddress(editingBill.customerAddress || '');
+      setCustomerGst(editingBill.customerGst || '');
       setCompany(editingBill.companyName || storeSettings.companyName || 'General');
       setBillNo(editingBill.billNo || '');
       setBillDate(editingBill.date || '');
@@ -195,11 +196,14 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
         pktUnit: p.pktUnit || 'Box',
         amount: String(p.amount || (Number(p.quantity || 1) * Number(p.rate || 0)).toFixed(2)),
       })));
+    } else {
+      setEditingBillId(null);
     }
   }, [editingBill, storeSettings.companyName]);
 
-  // Auto-persist draft bill to localStorage
+  // Auto-persist draft bill to localStorage ONLY when NOT editing an existing bill
   useEffect(() => {
+    if (editingBill || editingBillId) return;
     const draftPayload: DraftBillState = {
       customerName,
       customerPhone,
@@ -218,7 +222,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
     } catch (e) {
       console.warn('Failed to auto-save draft bill to localStorage', e);
     }
-  }, [customerName, customerPhone, customerAddress, customerGst, billNo, billDate, discount, transport, packing, tax, productRows]);
+  }, [editingBill, editingBillId, customerName, customerPhone, customerAddress, customerGst, billNo, billDate, discount, transport, packing, tax, productRows]);
 
   // Listen for settings update (when user updates company name/logo/tax settings in Settings)
   useEffect(() => {
@@ -226,10 +230,8 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
       const updated = getStoredSettings();
       setStoreSettings(updated);
       setCompany(updated.companyName || 'General');
-      if (updated.enableTax && (!tax || tax === '0')) {
+      if (updated.defaultTaxRate && (!tax || tax === '0')) {
         setTax(updated.defaultTaxRate || '0');
-      } else if (!updated.enableTax) {
-        setTax('0');
       }
     };
     window.addEventListener('dheeksha_settings_updated', handleSettingsUpdate);
@@ -318,7 +320,9 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
 
   // Fetch Next Suggested Bill No (e.g. 0001, 0002...)
   const fetchNextBillNo = async (force: boolean = false) => {
-    if (editingBillId && !force) return;
+    // NEVER overwrite billNo if we are currently editing an existing bill!
+    if (editingBill || editingBillId) return;
+    if (!force && billNo && billNo.trim() !== '') return;
     try {
       const res = await ParticularsApi.getNextBillNo();
       const nextNo = (res as any)?.nextBillNo || (res as any)?.data?.nextBillNo;
@@ -334,21 +338,23 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
   };
 
   const refreshDate = () => {
-    if (draft.billDate) return;
+    if (draft.billDate || editingBill) return;
     const today = new Date();
     setBillDate(today.toLocaleDateString('en-GB').replace(/\//g, '-'));
   };
 
   useEffect(() => {
     loadOptions();
-    fetchNextBillNo(true);
-    refreshDate();
+    if (!editingBill) {
+      fetchNextBillNo(false);
+      refreshDate();
+    }
   }, []);
 
-  // Listen for external bill update/deletion events to keep Bill No in sync
+  // Listen for external bill update/deletion events to keep Bill No in sync (only in new bill mode)
   useEffect(() => {
     const handleBillsUpdate = () => {
-      if (!editingBillId) {
+      if (!editingBill && !editingBillId) {
         fetchNextBillNo(true);
       }
     };
@@ -356,7 +362,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
     return () => {
       window.removeEventListener('dheeksha_bills_updated', handleBillsUpdate);
     };
-  }, [editingBillId]);
+  }, [editingBill, editingBillId]);
 
   // Update customer name if prop changes
   useEffect(() => {
@@ -413,21 +419,32 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
     return rawDisc;
   }, [subtotal, discount]);
 
+  const packingAmount = useMemo(() => {
+    const rawPack = parseFloat(packing) || 0;
+    if (rawPack <= 0) return 0;
+    if (rawPack <= 100) {
+      return (subtotal * rawPack) / 100;
+    }
+    return rawPack;
+  }, [subtotal, packing]);
+
+  const taxAmount = useMemo(() => {
+    const taxPercent = parseFloat(tax) || 0;
+    if (taxPercent <= 0) return 0;
+    const transportAmt = parseFloat(transport) || 0;
+    const baseForTax = Math.max(0, subtotal - discountAmount + packingAmount + transportAmt);
+    return (baseForTax * taxPercent) / 100;
+  }, [subtotal, discountAmount, packingAmount, transport, tax]);
+
   const totalCases = useMemo(() => {
     return productRows.reduce((acc, row) => acc + (parseFloat(row.quantity) || 0), 0);
   }, [productRows]);
 
   const grandTotal = useMemo(() => {
     const transportAmt = parseFloat(transport) || 0;
-    const packingAmt = parseFloat(packing) || 0;
-    const isTaxEnabled = Boolean(storeSettings.enableTax);
-    const taxPercent = isTaxEnabled ? (parseFloat(tax) || 0) : 0;
-
     const afterDiscount = Math.max(0, subtotal - discountAmount);
-    const withAdditions = afterDiscount + transportAmt + packingAmt;
-    const taxAmt = taxPercent > 0 ? (withAdditions * taxPercent) / 100 : 0;
-    return withAdditions + taxAmt;
-  }, [subtotal, discountAmount, transport, packing, tax, storeSettings.enableTax]);
+    return afterDiscount + packingAmount + transportAmt + taxAmount;
+  }, [subtotal, discountAmount, packingAmount, transport, taxAmount]);
 
   // Save or Update Bill to DB
   const handleSaveBill = async (andPrint: boolean = false) => {
@@ -442,9 +459,14 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
 
     try {
       setSavingBill(true);
-      const isTaxEnabled = Boolean(storeSettings.enableTax);
+      const isUpdating = Boolean(editingBillId || editingBill);
+      const targetId = editingBillId || editingBill?._id || editingBill?.id;
+      const targetBillNo = isUpdating
+        ? (billNo.trim() || editingBill?.billNo || '')
+        : (billNo.trim() || `INV-${Date.now().toString().slice(-4)}`);
+
       const payload = {
-        billNo: billNo.trim() || `INV-${Date.now().toString().slice(-4)}`,
+        billNo: targetBillNo,
         date: billDate,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
@@ -455,7 +477,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
         caseCount: String(totalCases),
         discount: discount || '0',
         packing: packing || '0',
-        tax: isTaxEnabled ? (tax || '0') : '0',
+        tax: tax || '0',
         amount: String(subtotal.toFixed(2)),
         total: String(grandTotal.toFixed(2)),
         products: productRows.map((r) => ({
@@ -467,8 +489,8 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
         })),
       };
 
-      if (editingBillId) {
-        await ParticularsApi.update(editingBillId, payload);
+      if (isUpdating && targetId) {
+        await ParticularsApi.update(targetId, payload);
       } else {
         await ParticularsApi.create(payload);
       }
@@ -495,7 +517,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
         setPrintModalOpen(true);
       }
 
-      const wasEditing = Boolean(editingBillId);
+      const wasEditing = isUpdating;
       const updatedBillNo = payload.billNo;
 
       // Reset Bill Form & Reload Next Bill No
@@ -507,8 +529,11 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
       setDiscount('0');
       setTransport('0');
       setPacking('0');
-      setTax(storeSettings.enableTax ? (storeSettings.defaultTaxRate || '0') : '0');
+      setTax(storeSettings.defaultTaxRate || '0');
       setEditingBillId(null);
+      if (wasEditing && onCancelEdit) {
+        onCancelEdit();
+      }
       localStorage.removeItem(DRAFT_BILL_STORAGE_KEY);
       localStorage.removeItem('dheeksha_active_customer');
       fetchNextBillNo(true);
@@ -518,10 +543,6 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
 
       if (!andPrint) {
         alert(wasEditing ? `✅ Bill #${updatedBillNo} updated successfully!` : `✅ Bill #${updatedBillNo} saved successfully!`);
-      }
-
-      if (wasEditing && onCancelEdit) {
-        onCancelEdit();
       }
     } catch (err: any) {
       console.error('Failed to save bill:', err);
@@ -544,7 +565,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
         setDiscount('0');
         setTransport('0');
         setPacking('0');
-        setTax(storeSettings.enableTax ? (storeSettings.defaultTaxRate || '0') : '0');
+        setTax(storeSettings.defaultTaxRate || '0');
         fetchNextBillNo(true);
         refreshDate();
         onCancelEdit?.();
@@ -563,7 +584,7 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
     setDiscount('0');
     setTransport('0');
     setPacking('0');
-    setTax(storeSettings.enableTax ? (storeSettings.defaultTaxRate || '0') : '0');
+    setTax(storeSettings.defaultTaxRate || '0');
     localStorage.removeItem(DRAFT_BILL_STORAGE_KEY);
     localStorage.removeItem('dheeksha_active_customer');
     fetchNextBillNo(true);
@@ -829,13 +850,13 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
 
               <Divider sx={{ my: 0.5, borderColor: '#FEF3C7' }} />
 
-              {/* Additional Adjustments: Discount, Transport, Packing, (Tax only if enabled) */}
+              {/* Additional Adjustments: Discount, Packing, Tax */}
               <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#78350F' }}>
                 Adjustments & Charges
               </Typography>
 
               <Grid container spacing={1.5}>
-                <Grid size={{ xs: 6, sm: storeSettings.enableTax ? 6 : 4 }}>
+                <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
                     Discount (% or ₹)
                   </Typography>
@@ -844,59 +865,44 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
                     size="small"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
+                    placeholder="e.g. 10 or 500"
                     sx={{
                       '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
                     }}
                   />
                 </Grid>
 
-                <Grid size={{ xs: 6, sm: storeSettings.enableTax ? 6 : 4 }}>
+                <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
-                    Transport (₹)
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    value={transport}
-                    onChange={(e) => setTransport(e.target.value)}
-                    sx={{
-                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
-                    }}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 6, sm: storeSettings.enableTax ? 6 : 4 }}>
-                  <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
-                    Packing (₹)
+                    Packing (%)
                   </Typography>
                   <TextField
                     fullWidth
                     size="small"
                     value={packing}
                     onChange={(e) => setPacking(e.target.value)}
+                    placeholder="e.g. 3"
                     sx={{
                       '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
                     }}
                   />
                 </Grid>
 
-                {storeSettings.enableTax && (
-                  <Grid size={{ xs: 6, sm: 6 }}>
-                    <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
-                      Tax / GST (%)
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={tax}
-                      onChange={(e) => setTax(e.target.value)}
-                      placeholder="e.g. 18"
-                      sx={{
-                        '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
-                      }}
-                    />
-                  </Grid>
-                )}
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#786C58', mb: 0.4 }}>
+                    Tax / GST (%)
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    value={tax}
+                    onChange={(e) => setTax(e.target.value)}
+                    placeholder="e.g. 18"
+                    sx={{
+                      '& .MuiInputBase-input': { fontSize: '13px', fontWeight: 600 },
+                    }}
+                  />
+                </Grid>
               </Grid>
 
               {/* Summary Total Card with Complete Breakdown */}
@@ -925,6 +931,26 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
                   </Box>
                 )}
 
+                {packingAmount > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>
+                      Packing Charges ({parseFloat(packing) <= 100 ? `${packing}%` : `₹${packing}`}):
+                    </Typography>
+                    <Typography sx={{ fontSize: '12.5px', color: '#1F1714', fontWeight: 700 }}>
+                      +₹{packingAmount.toFixed(2)}
+                    </Typography>
+                  </Box>
+                )}
+
+                {taxAmount > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
+                    <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>GST / Tax ({tax}%):</Typography>
+                    <Typography sx={{ fontSize: '12.5px', color: '#1F1714', fontWeight: 700 }}>
+                      +₹{taxAmount.toFixed(2)}
+                    </Typography>
+                  </Box>
+                )}
+
                 {parseFloat(transport) > 0 && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
                     <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>Transport Charges:</Typography>
@@ -934,20 +960,11 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
                   </Box>
                 )}
 
-                {parseFloat(packing) > 0 && (
+                {totalCases > 0 && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
-                    <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>Packing Charges:</Typography>
-                    <Typography sx={{ fontSize: '12.5px', color: '#1F1714', fontWeight: 700 }}>
-                      +₹{parseFloat(packing).toFixed(2)}
-                    </Typography>
-                  </Box>
-                )}
-
-                {storeSettings.enableTax && parseFloat(tax) > 0 && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.6 }}>
-                    <Typography sx={{ fontSize: '12.5px', color: '#786C58', fontWeight: 600 }}>GST / Tax ({tax}%):</Typography>
-                    <Typography sx={{ fontSize: '12.5px', color: '#1F1714', fontWeight: 700 }}>
-                      +₹{(((Math.max(0, subtotal - discountAmount) + parseFloat(transport || '0') + parseFloat(packing || '0')) * parseFloat(tax)) / 100).toFixed(2)}
+                    <Typography sx={{ fontSize: '12px', color: '#92400E', fontWeight: 600 }}>Total Qty / Cases:</Typography>
+                    <Typography sx={{ fontSize: '12.5px', color: '#92400E', fontWeight: 700 }}>
+                      {totalCases}
                     </Typography>
                   </Box>
                 )}

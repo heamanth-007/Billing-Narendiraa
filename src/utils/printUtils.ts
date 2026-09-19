@@ -274,11 +274,23 @@ export const generateBillHtml = (bill: BillPrintData): string => {
     .bill-box-container {
       width: 100%;
       max-width: 194mm;
+      min-height: 280mm;
       margin: 0 auto;
       border: 1.5px solid #000000;
       background: #ffffff;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       page-break-inside: avoid;
+    }
+    .bill-top-content {
+      width: 100%;
+    }
+    .bill-bottom-content {
+      width: 100%;
+      margin-top: auto;
+      border-top: 1.5px solid #000000;
     }
     .top-header {
       text-align: center;
@@ -470,7 +482,9 @@ export const generateBillHtml = (bill: BillPrintData): string => {
 </head>
 <body>
   <div class="bill-box-container">
-    <!-- Header -->
+    <!-- Top Content: Header, Meta & Products Table -->
+    <div class="bill-top-content">
+      <!-- Header -->
     <div class="top-header">
       ${storeSettings.tagline ? `<div class="comp-tagline">${storeSettings.tagline}</div>` : ''}
       ${
@@ -542,10 +556,13 @@ export const generateBillHtml = (bill: BillPrintData): string => {
       <tbody>
         ${productRowsHtml || '<tr><td colspan="6" style="text-align:center; padding:12px; border:1px solid #000;">No product items</td></tr>'}
       </tbody>
-    </table>
+      </table>
+    </div>
 
-    <!-- Bottom Split Section -->
-    <div class="bottom-section">
+    <!-- Bottom Fitted Section: Calculation, Words, Terms & Signatures -->
+    <div class="bill-bottom-content">
+      <!-- Bottom Split Section -->
+      <div class="bottom-section">
       <!-- Left Column: Amount in Words, Receipt & Terms -->
       <div class="left-info-area">
         <div>
@@ -623,6 +640,7 @@ export const generateBillHtml = (bill: BillPrintData): string => {
         <div style="font-size: 11px; font-weight: 700; margin-bottom: 24px;">For ${displayCompanyName}</div>
         <span class="sign-label">Authorized Signatory</span>
       </div>
+    </div>
     </div>
   </div>
 </body>
