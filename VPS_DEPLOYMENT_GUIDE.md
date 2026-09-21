@@ -1,6 +1,6 @@
-# Dheeksha Trade - VPS Deployment Guide (Hostinger / Ubuntu)
+# Billing Narendiraa - VPS Deployment Guide (Ubuntu / Hostinger)
 
-This guide provides step-by-step instructions to deploy the Dheeksha Trade application (React Vite Frontend + Node/Express TypeScript Backend + MongoDB Atlas + Cloudinary) on an Ubuntu VPS.
+This guide provides step-by-step instructions to deploy the Billing Narendiraa application (React Vite Frontend + Node/Express TypeScript Backend + PM2 + Nginx + MongoDB Atlas) on an Ubuntu VPS under the subdomain `billing.narendiraaenterprises.com` on port `5014`.
 
 ---
 
@@ -8,25 +8,36 @@ This guide provides step-by-step instructions to deploy the Dheeksha Trade appli
 
 ```
                           Internet (User Request)
-                                    │
-                                    ▼
-                         [ Nginx Web Server ] (Port 80 / 443 SSL)
-                                    │
-               ┌────────────────────┴────────────────────┐
-               │                                         │
+                                     │
+                                     ▼
+                     [ Nginx Web Server (Port 80 / 443 SSL) ]
+                        billing.narendiraaenterprises.com
+                                     │
+                ┌────────────────────┴────────────────────┐
+                │                                         │
         Frontend Requests (/ & /assets/*)       Backend API Requests (/api/*)
-               │                                         │
-               ▼                                         ▼
-   Static Files (/var/www/.../dist)          Express API (Port 5004 via PM2)
-                                                         │
-                                         ┌───────────────┴───────────────┐
-                                         ▼                               ▼
-                                   MongoDB Atlas                    Cloudinary
+                │                                         │
+                ▼                                         ▼
+    Static SPA (/var/www/billing-narendiraa/dist)   Express API (Port 5014 via PM2)
+                                                          │
+                                                  MongoDB Atlas Cloud
 ```
 
 ---
 
-## 📋 Step 1: Initial VPS Server Setup
+## 📋 Step 1: DNS Configuration (Do this First)
+
+In your Domain DNS Management (Hostinger / Cloudflare / GoDaddy):
+- **Type**: `A`
+- **Name / Host**: `billing`
+- **Points to / Value**: `<YOUR_VPS_IP_ADDRESS>`
+- **TTL**: `Automatic` or `300`
+
+*(This points `billing.narendiraaenterprises.com` to your VPS IP address).*
+
+---
+
+## 💻 Step 2: Initial VPS Server Setup
 
 Connect to your VPS via SSH:
 ```bash
@@ -61,20 +72,20 @@ sudo ufw enable
 
 ---
 
-## 📂 Step 2: Clone Project & Configure Directory
+## 📂 Step 3: Clone Project & Configure Directory
 
 Create the web directory and clone your repository:
 ```bash
-sudo mkdir -p /var/www/dheeksha-trade
-sudo chown -R $USER:$USER /var/www/dheeksha-trade
-cd /var/www/dheeksha-trade
+sudo mkdir -p /var/www/billing-narendiraa
+sudo chown -R $USER:$USER /var/www/billing-narendiraa
+cd /var/www/billing-narendiraa
 
 git clone <YOUR_GIT_REPO_URL> .
 ```
 
 ---
 
-## ⚙️ Step 3: Configure Environment Variables
+## ⚙️ Step 4: Configure Environment Variables
 
 ### 1. Root `.env` (Frontend)
 ```bash
@@ -92,33 +103,30 @@ nano server/.env
 ```
 Add your production configuration:
 ```env
-PORT=5004
+PORT=5014
 NODE_ENV=production
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.txhuc3s.mongodb.net/dheeksha_trade?retryWrites=true&w=majority
-CORS_ORIGIN=https://yourdomain.com
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+MONGODB_URI=mongodb+srv://heamanthprabhu59_db_user:Heamanth007@cluster0.nyvgk5e.mongodb.net/?appName=Cluster0
+CORS_ORIGIN=https://billing.narendiraaenterprises.com
 ```
 
 ---
 
-## 🚀 Step 4: Install Dependencies & Build
+## 🚀 Step 5: Install Dependencies & Build
 
 ```bash
-cd /var/www/dheeksha-trade
+cd /var/www/billing-narendiraa
 
 # Install dependencies for both frontend and backend
 npm install
 npm --prefix server install
 
-# Build both frontend and backend
+# Build both frontend (dist) and backend (server/dist)
 npm run build:all
 ```
 
 ---
 
-## 🔄 Step 5: Start Backend with PM2
+## 🔄 Step 6: Start Backend with PM2 (Port 5014)
 
 Start the backend API server using the PM2 configuration:
 ```bash
@@ -126,46 +134,63 @@ pm2 start ecosystem.config.cjs
 pm2 save
 pm2 startup
 ```
-*(Follow the onscreen prompt from `pm2 startup` to enable auto-restart on system reboot).*
+*(Run the command output by `pm2 startup` if prompted to enable auto-start on server reboot).*
 
-Check status & logs:
+Check PM2 status & logs:
 ```bash
 pm2 status
-pm2 logs dheeksha-trade-api
+pm2 logs billing-narendiraa-api
 ```
 
 ---
 
-## 🌐 Step 6: Configure Nginx
+## 🌐 Step 7: Configure Nginx Reverse Proxy
 
-Copy the provided Nginx configuration:
+Copy the pre-configured Nginx configuration:
 ```bash
-sudo cp nginx/dheeksha-trade.conf /etc/nginx/sites-available/dheeksha-trade
+sudo cp nginx/billing-narendiraa.conf /etc/nginx/sites-available/billing-narendiraa
 ```
 
-Edit the domain name inside `/etc/nginx/sites-available/dheeksha-trade`:
+Enable the configuration in Nginx:
 ```bash
-sudo nano /etc/nginx/sites-available/dheeksha-trade
-```
-*Replace `yourdomain.com` with your actual domain or VPS IP address.*
-
-Enable the site:
-```bash
-sudo ln -sf /etc/nginx/sites-available/dheeksha-trade /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/billing-narendiraa /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
+```
+
+Test Nginx configuration for syntax errors:
+```bash
 sudo nginx -t
+```
+*(You should see `syntax is ok` and `test is successful`)*
+
+Restart Nginx:
+```bash
 sudo systemctl restart nginx
 ```
 
 ---
 
-## 🔒 Step 7: Setup Free SSL (HTTPS) with Certbot
+## 🔒 Step 8: Setup Free SSL (HTTPS) with Certbot
 
+Install Certbot and get SSL certificate for `billing.narendiraaenterprises.com`:
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+sudo certbot --nginx -d billing.narendiraaenterprises.com
 ```
-Certbot will configure SSL automatically and auto-renew.
+Follow prompts (enter email address, agree to terms). Certbot will automatically configure HTTPS redirect and SSL certificates!
+
+---
+
+## 🔍 Step 9: Verify Deployment
+
+1. Check Backend API health directly:
+   ```bash
+   curl http://127.0.0.1:5014/api/health
+   ```
+2. Open your browser and navigate to:
+   ```
+   https://billing.narendiraaenterprises.com
+   ```
 
 ---
 
@@ -173,7 +198,7 @@ Certbot will configure SSL automatically and auto-renew.
 
 Whenever you push new updates to GitHub, simply run:
 ```bash
-cd /var/www/dheeksha-trade
+cd /var/www/billing-narendiraa
 bash deploy.sh
 ```
-This will automatically pull the changes, rebuild the frontend, rebuild the backend, and restart PM2 without downtime!
+This script will automatically pull latest changes, install any new dependencies, re-build frontend & backend, and reload PM2 without downtime!

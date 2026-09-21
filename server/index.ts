@@ -22,7 +22,7 @@ import settingsRoutes from './routes/settingsRoutes';
 import { seedDefaultAdmin } from './controllers/authController';
 
 const app: Application = express();
-const PORT = process.env.PORT || 5004;
+const PORT = process.env.PORT || 5014;
 
 // Connect Database & Seed default admin
 connectDB().then(() => {
