@@ -52,6 +52,8 @@ interface ProductCatalogOption {
   rate?: number;
   mrp?: number;
   unit?: string;
+  stock?: number;
+  minStock?: number;
 }
 
 interface ParticularsPageProps {
@@ -283,6 +285,8 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
               rate: p.rate || 0,
               mrp: p.mrp || 0,
               unit: p.unit || 'Box',
+              stock: p.stock !== undefined ? Number(p.stock) : 0,
+              minStock: p.minStock !== undefined ? Number(p.minStock) : 5,
             });
           }
         });
@@ -300,6 +304,8 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
               rate: item.rate !== undefined && item.rate > 0 ? item.rate : (existing?.rate || 0),
               mrp: item.mrp !== undefined && item.mrp > 0 ? item.mrp : (existing?.mrp || 0),
               unit: item.unit || existing?.unit || 'Box',
+              stock: item.stock !== undefined ? Number(item.stock) : (existing?.stock || 0),
+              minStock: existing?.minStock ?? 5,
             });
           }
         });
@@ -1107,47 +1113,65 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
                         setSelectedProduct('');
                       }
                     }}
-                    renderOption={(props, option) => (
-                      <Box
-                        component="li"
-                        {...props}
-                        key={option.id || option.name}
-                        sx={{
-                          display: 'flex !important',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          width: '100%',
-                          py: 0.8,
-                          px: 1.5,
-                          gap: 1,
-                          borderBottom: '1px solid #FEF3C7',
-                          '&:last-child': { borderBottom: 'none' },
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714' }}>
-                            {option.name}
-                          </Typography>
-                          {option.category && (
-                            <Typography sx={{ fontSize: '11px', color: '#D97706', fontWeight: 600 }}>
-                              {option.category}
+                    renderOption={(props, option) => {
+                      const isOut = (option.stock ?? 0) <= 0;
+                      const isLow = !isOut && (option.stock ?? 0) <= (option.minStock ?? 5);
+
+                      return (
+                        <Box
+                          component="li"
+                          {...props}
+                          key={option.id || option.name}
+                          sx={{
+                            display: 'flex !important',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            width: '100%',
+                            py: 0.8,
+                            px: 1.5,
+                            gap: 1,
+                            borderBottom: '1px solid #FEF3C7',
+                            '&:last-child': { borderBottom: 'none' },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                            <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1F1714' }}>
+                              {option.name}
                             </Typography>
-                          )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mt: 0.2 }}>
+                              {option.category && (
+                                <Typography sx={{ fontSize: '11px', color: '#D97706', fontWeight: 600 }}>
+                                  {option.category}
+                                </Typography>
+                              )}
+                              <Chip
+                                label={isOut ? 'Out of Stock' : `${option.stock ?? 0} in stock`}
+                                size="small"
+                                sx={{
+                                  height: '18px',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  backgroundColor: isOut ? '#FEE2E2' : isLow ? '#FEF3C7' : '#DCFCE7',
+                                  color: isOut ? '#991B1B' : isLow ? '#92400E' : '#166534',
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                          <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                            {option.rate !== undefined && option.rate > 0 && (
+                              <Typography sx={{ fontSize: '13px', fontWeight: 800, color: '#B91C1C' }}>
+                                ₹{Number(option.rate).toLocaleString('en-IN')}
+                              </Typography>
+                            )}
+                            {option.unit && (
+                              <Typography sx={{ fontSize: '10.5px', color: '#6B7280' }}>
+                                / {option.unit}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
-                        <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-                          {option.rate !== undefined && option.rate > 0 && (
-                            <Typography sx={{ fontSize: '13px', fontWeight: 800, color: '#B91C1C' }}>
-                              ₹{Number(option.rate).toLocaleString('en-IN')}
-                            </Typography>
-                          )}
-                          {option.unit && (
-                            <Typography sx={{ fontSize: '10.5px', color: '#6B7280' }}>
-                              / {option.unit}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    )}
+                      );
+                    }}
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -1236,6 +1260,51 @@ export const ParticularsPage: FC<ParticularsPageProps> = ({ initialCustomerName,
                   </Button>
                 </Grid>
               </Grid>
+
+              {/* Live Selected Item Stock Info & Warning */}
+              {selectedProduct && (() => {
+                const matched = productOptions.find((p) => p.name.toLowerCase() === selectedProduct.toLowerCase());
+                const currentStock = matched?.stock ?? 0;
+                const isOut = currentStock <= 0;
+                const isLow = !isOut && currentStock <= (matched?.minStock ?? 5);
+                const qNum = parseFloat(quantity) || 0;
+                const exceeds = qNum > currentStock;
+
+                return (
+                  <Box sx={{ mt: 1.2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip
+                      label={
+                        isOut
+                          ? `⚠️ Out of Stock (0 ${matched?.unit || 'Units'} Available)`
+                          : isLow
+                          ? `⚠️ Low Stock (${currentStock} ${matched?.unit || 'Units'} Left)`
+                          : `✓ In Stock: ${currentStock} ${matched?.unit || 'Units'} Available`
+                      }
+                      size="small"
+                      sx={{
+                        backgroundColor: isOut ? '#FEE2E2' : isLow ? '#FEF3C7' : '#DCFCE7',
+                        color: isOut ? '#991B1B' : isLow ? '#92400E' : '#166534',
+                        fontWeight: 700,
+                        fontSize: '11px',
+                        border: '1px solid rgba(0,0,0,0.1)',
+                      }}
+                    />
+                    {exceeds && currentStock > 0 && (
+                      <Chip
+                        label={`⚠️ Warning: Billed Qty (${qNum}) exceeds available stock (${currentStock})`}
+                        size="small"
+                        sx={{
+                          backgroundColor: '#FFEDD5',
+                          color: '#C2410C',
+                          fontWeight: 800,
+                          fontSize: '11px',
+                          border: '1px solid #FDBA74',
+                        }}
+                      />
+                    )}
+                  </Box>
+                );
+              })()}
             </Box>
 
             {/* Desktop View: Current Bill Items Table */}

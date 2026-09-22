@@ -184,6 +184,62 @@ export const SettingsApi = {
     }),
 };
 
+// Stock & Inventory API
+export const StockApi = {
+  getAll: (params?: { category?: string; status?: string; search?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.category && params.category !== 'ALL') query.append('category', params.category);
+    if (params?.status && params.status !== 'ALL') query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    const qs = query.toString();
+    return request<{
+      summary: {
+        totalProducts: number;
+        totalStockQty: number;
+        totalStockValue: number;
+        inStockCount: number;
+        lowStockCount: number;
+        outOfStockCount: number;
+      };
+      count: number;
+      data: Array<{
+        id: string;
+        name: string;
+        category: string;
+        unit: string;
+        rate: number;
+        mrp: number;
+        stock: number;
+        minStock: number;
+        status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+        stockValue: number;
+        updatedAt?: string;
+      }>;
+    }>(`/stock${qs ? `?${qs}` : ''}`);
+  },
+  adjustStock: (data: {
+    itemName: string;
+    deltaQuantity?: number;
+    newStock?: number;
+    changeType?: 'STOCK_IN' | 'STOCK_OUT' | 'ADJUSTMENT';
+    referenceNo?: string;
+    customerOrVendor?: string;
+    notes?: string;
+    date?: string;
+    minStock?: number;
+  }) => request<any>('/stock/adjust', { method: 'POST', body: JSON.stringify(data) }),
+  getHistory: (params?: { itemName?: string; changeType?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.itemName) query.append('itemName', params.itemName);
+    if (params?.changeType && params.changeType !== 'ALL') query.append('changeType', params.changeType);
+    if (params?.limit) query.append('limit', String(params.limit));
+    const qs = query.toString();
+    return request<any[]>(`/stock/history${qs ? `?${qs}` : ''}`);
+  },
+  bulkUpdate: (items: Array<{ itemName: string; stock?: number; minStock?: number }>) =>
+    request<any>('/stock/bulk', { method: 'POST', body: JSON.stringify({ items }) }),
+};
+
 // Health Check API
 export const HealthApi = {
   check: () => request<{ status: string; message: string; timestamp: string }>('/health'),

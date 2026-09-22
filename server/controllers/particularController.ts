@@ -4,6 +4,7 @@ import { AccountLedger } from '../models/AccountLedger';
 import { Customer } from '../models/Customer';
 import { escapeRegex, recalculateCustomerBalance } from '../utils/ledgerUtils';
 import { isCloudinaryConfigured, uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary';
+import { deductStockForBill, adjustStockForBillUpdate, restoreStockForBill } from '../utils/stockUtils';
 
 export const getParticulars = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -224,6 +225,20 @@ export const createParticular = async (req: Request, res: Response, next: NextFu
       await recalculateCustomerBalance(particular.customerName);
     }
 
+    // 3. Automatically deduct items quantity from inventory stock
+    if (Array.isArray(particular.products) && particular.products.length > 0) {
+      try {
+        await deductStockForBill(
+          particular.products,
+          particular.billNo,
+          particular.customerName,
+          particular.date
+        );
+      } catch (stockErr) {
+        console.error('[Stock Deduction Warning]:', stockErr);
+      }
+    }
+
     res.status(201).json({ success: true, data: particular });
   } catch (error) {
     next(error);
@@ -240,6 +255,7 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
     }
 
     const oldCustomerName = existing.customerName;
+    const oldProducts = existing.products ? JSON.parse(JSON.stringify(existing.products)) : [];
 
     const {
       customerName,
@@ -409,6 +425,21 @@ export const updateParticular = async (req: Request, res: Response, next: NextFu
     }
     await recalculateCustomerBalance(updatedParticular.customerName);
 
+    // Sync Stock differences if products were updated
+    if (products !== undefined) {
+      try {
+        await adjustStockForBillUpdate(
+          oldProducts,
+          updatedParticular.products || [],
+          updatedParticular.billNo,
+          updatedParticular.customerName,
+          updatedParticular.date
+        );
+      } catch (stockErr) {
+        console.error('[Stock Update Sync Warning]:', stockErr);
+      }
+    }
+
     res.status(200).json({ success: true, data: updatedParticular });
   } catch (error) {
     next(error);
@@ -434,10 +465,24 @@ export const deleteParticular = async (req: Request, res: Response, next: NextFu
       }
     }
 
-    // 2. Delete Particular Document
+    // 2. Restore deducted stock back to inventory
+    if (Array.isArray(particular.products) && particular.products.length > 0) {
+      try {
+        await restoreStockForBill(
+          particular.products,
+          particular.billNo,
+          particular.customerName,
+          particular.date
+        );
+      } catch (stockErr) {
+        console.error('[Stock Restore Warning on Delete]:', stockErr);
+      }
+    }
+
+    // 3. Delete Particular Document
     await Particular.findByIdAndDelete(req.params.id);
 
-    // 3. Cascade Delete: Delete matching AccountLedger entries (BILL and PAYMENT)
+    // 4. Cascade Delete: Delete matching AccountLedger entries (BILL and PAYMENT)
     const ledgerFilter: any[] = [
       { particularId: String(req.params.id) },
       { particularId: String(particular._id) },
@@ -447,7 +492,7 @@ export const deleteParticular = async (req: Request, res: Response, next: NextFu
     }
     await AccountLedger.deleteMany({ $or: ledgerFilter });
 
-    // 4. Recalculate balance for this customer
+    // 5. Recalculate balance for this customer
     if (customerName) {
       await recalculateCustomerBalance(customerName);
     }
@@ -475,7 +520,18 @@ export const clearAllParticulars = async (_req: Request, res: Response, next: Ne
       }
     }
 
-    // 2. Delete all particulars
+    // 2. Restore stock deducted by all deleted particulars
+    for (const p of allParticulars) {
+      if (Array.isArray(p.products) && p.products.length > 0) {
+        try {
+          await restoreStockForBill(p.products, p.billNo, p.customerName, p.date);
+        } catch (e) {
+          console.warn('[Stock Cleanup Warning]:', e);
+        }
+      }
+    }
+
+    // 3. Delete all particulars
     const delRes = await Particular.deleteMany({});
 
     // 3. Delete all ledger entries of type BILL and associated payments

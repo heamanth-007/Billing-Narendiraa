@@ -6,6 +6,7 @@ import { LoginPage } from './components/LoginPage';
 import { CategoriesPage } from './components/CategoriesPage';
 import { PriceListPage } from './components/PriceListPage';
 import { ProductsPage } from './components/ProductsPage';
+import { StockPage } from './components/StockPage';
 import { AllCustomersPage } from './components/AllCustomersPage';
 import { AddCustomerPage } from './components/AddCustomerPage';
 import { ParticularsPage } from './components/ParticularsPage';
@@ -150,6 +151,9 @@ function App() {
               onCancelEdit={handleCancelEdit}
             />
           )}
+
+          {/* Stock Maintenance Tab */}
+          {activeTab === 'Stock' && <StockPage />}
 
           {/* Categories Tab */}
           {activeTab === 'Categories' && <CategoriesPage />}

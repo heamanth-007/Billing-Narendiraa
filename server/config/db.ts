@@ -11,9 +11,11 @@ export const connectDB = async (retryCount = 0): Promise<void> => {
     uri = uri.replace(/<([^>]+)>/g, '$1');
   }
 
-  // Ensure DB name is explicitly set to dheeksha_trade
-  if (uri.includes('cluster0.txhuc3s.mongodb.net/?')) {
-    uri = uri.replace('cluster0.txhuc3s.mongodb.net/?', 'cluster0.txhuc3s.mongodb.net/dheeksha_trade?');
+  // If URI has no DB specified (ends with .mongodb.net/ or .mongodb.net/?), default to test
+  if (uri.includes('.mongodb.net/?')) {
+    uri = uri.replace('.mongodb.net/?', '.mongodb.net/test?');
+  } else if (uri.endsWith('.mongodb.net') || uri.endsWith('.mongodb.net/')) {
+    uri = uri.replace(/\.mongodb\.net\/?$/, '.mongodb.net/test');
   }
 
   try {
